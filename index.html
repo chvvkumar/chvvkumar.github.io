@@ -175,6 +175,16 @@
         }
         /* Removed .pbm-zone-label CSS block as the label is no longer used */
 
+        /* T1 Wait Zone Styling */
+        .t1-wait-zone {
+            position: absolute;
+            height: 80%;
+            top: 10%;
+            background-color: rgba(251, 146, 60, 0.15); /* Orange shade */
+            border-right: 1px solid #f97316; /* Solid line at T1 */
+            z-index: 5; /* Ensure it is behind other elements */
+        }
+
         /* Sub Exposure Base Styles */
         .sub-exposure {
             position: absolute;
@@ -406,6 +416,20 @@
                 pbmZone.style.width = `${pbmZoneWidth}px`;
                 
                 axisWrapper.appendChild(pbmZone);
+            }
+
+            // 3A. Render T1 Wait Zone (from Meridian to T1)
+            if (T1_sec > 0) {
+                const t1ZoneStartPos = timeToPos(0); // Meridian
+                const t1ZoneEndPos = timeToPos(T1_sec);
+                const t1ZoneWidth = t1ZoneEndPos - t1ZoneStartPos;
+
+                const t1WaitZone = document.createElement('div');
+                t1WaitZone.className = 't1-wait-zone';
+                t1WaitZone.style.left = `${t1ZoneStartPos}px`;
+                t1WaitZone.style.width = `${t1ZoneWidth}px`;
+                
+                axisWrapper.appendChild(t1WaitZone);
             }
 
             // 4. Render FLIP ZONE
