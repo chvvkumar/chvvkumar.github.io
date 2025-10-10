@@ -606,6 +606,12 @@
             // Calculate time equivalent of the mouse X position (This is the desired START time)
             let t_cursor_start = (mouseX / scaleFactor) - maxTime;
             
+            // Don't allow the sub START to go past T1 (left boundary of flip window)
+            const T1_sec = (parseFloat(document.getElementById('t1').value) || 0) * 60;
+            if (t_cursor_start > T1_sec) {
+                t_cursor_start = T1_sec;
+            }
+            
             // Anchor the END of the sub, as this is the trigger point.
             let t_new_end = t_cursor_start + T_Exposure;
             
