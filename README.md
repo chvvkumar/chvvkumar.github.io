@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -110,41 +111,47 @@
     <div class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-8">
         <h1 class="text-3xl font-bold mb-4 text-gray-800 border-b pb-2">N.I.N.A. Meridian Flip Simulator</h1>
 
-        <!-- Configuration Inputs -->
+        <!-- Configuration Inputs - All in one row -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
             
-            <!-- T1 Input -->
+            <!-- T1 Input (N.I.N.A.) -->
             <div class="bg-gray-100 p-4 rounded-lg shadow-inner">
                 <label for="t1" class="block text-sm font-medium text-gray-700">Minutes after meridian (T1)</label>
                 <input type="number" id="t1" value="2" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
                 <p class="text-xs text-gray-500 mt-1">Flip earliest start time (min)</p>
             </div>
 
-            <!-- T2 Input -->
+            <!-- T2 Input (N.I.N.A.) -->
             <div class="bg-gray-100 p-4 rounded-lg shadow-inner">
                 <label for="t2" class="block text-sm font-medium text-gray-700">Max. minutes after meridian (T2)</label>
                 <input type="number" id="t2" value="15" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
                 <p class="text-xs text-gray-500 mt-1">Flip software deadline (min)</p>
             </div>
 
-            <!-- T_Pause Input (moved up to fill the gap) -->
+            <!-- T_Pause Input (N.I.N.A.) -->
             <div class="bg-gray-100 p-4 rounded-lg shadow-inner">
                 <label for="t_pause" class="block text-sm font-medium text-gray-700">Pause before meridian</label>
                 <input type="number" id="t_pause" value="0" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-500 mt-1">Stops tracking before $t=0$ (min)</p>
+                <p class="text-xs text-gray-500 mt-1">Stops tracking before Meridian (min)</p>
             </div>
             
-            <!-- Scope Settle input was removed here -->
-
-        </div>
-        
-        <!-- Mount Limit Row -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-yellow-50 p-4 rounded-lg shadow-inner md:col-span-2">
+            <!-- Mount Limit Input (Physical Constraint) -->
+            <div class="bg-yellow-50 p-4 rounded-lg shadow-inner">
                 <label for="t_mount_limit" class="block text-sm font-medium text-gray-700">Max. Mount Tracking Past Meridian</label>
                 <input type="number" id="t_mount_limit" value="20" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
                 <p class="text-xs text-gray-500 mt-1">Absolute physical/driver limit (min)</p>
             </div>
+
+        </div>
+
+        <!-- Timeline Visualization (Moved to the top) -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Timeline Visualization (Total Downtime: <span id="total-time-min" class="font-mono text-downtime-red font-bold"></span>)</h2>
+            <div id="timeline-chart" class="timeline-container">
+                <div class="meridian-line"></div>
+                <!-- Timeline segments and Mount Limit line will be injected here -->
+            </div>
+            <p class="text-xs text-gray-500 mt-3 text-center">Timeline is scaled dynamically. Hover over segments for detail. (Scroll horizontally if needed)</p>
         </div>
 
 
@@ -158,7 +165,7 @@
                     Simulated End Time of Last Exposure: 
                     <span id="t_end_exp_display" class="font-mono text-blue-700 ml-2"></span>
                 </label>
-                <input type="range" id="t_end_exp" value="60" min="-180" max="300" step="10" 
+                <input type="range" id="t_end_exp" value="0" min="-180" max="300" step="10" 
                        class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer" oninput="calculateFlip()">
                 <div class="flex justify-between text-xs text-gray-500 mt-1">
                     <span>-3m (Well Before Meridian)</span>
@@ -167,11 +174,11 @@
                 </div>
             </div>
 
-            <!-- System Constants (Hidden but used) -->
+            <!-- System Constants -->
             <div class="bg-blue-100 p-3 rounded-lg text-xs text-blue-800">
                 <h3 class="font-bold mb-1">Post-Flip Time Assumptions:</h3>
                 <ul class="list-disc list-inside space-y-0.5">
-                    <li>Slew Time: 45s (Fixed time for mount flip)</li>
+                    <li>Slew Time: 45s (Fixed downtime for mount flip)</li>
                 </ul>
             </div>
         </div>
@@ -183,16 +190,6 @@
             <div id="summary" class="text-base text-gray-700 space-y-2">
                 <!-- Summary will be injected here -->
             </div>
-        </div>
-
-        <!-- Timeline Visualization -->
-        <div class="mb-8">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">Timeline Visualization (Total Downtime: <span id="total-time-min" class="font-mono text-downtime-red font-bold"></span>)</h2>
-            <div id="timeline-chart" class="timeline-container">
-                <div class="meridian-line"></div>
-                <!-- Timeline segments and Mount Limit line will be injected here -->
-            </div>
-            <p class="text-xs text-gray-500 mt-3 text-center">Timeline is scaled dynamically. Hover over segments for detail. (Scroll horizontally if needed)</p>
         </div>
 
     </div>
@@ -232,8 +229,6 @@
 
             // Calculate the offset required to center the Meridian (t=0)
             const meridianOffsetPixels = Math.abs(minTime) * scaleFactor + (containerWidth * 0.025); // Add a small left margin
-
-            let currentPosition = 0; // Tracks the position of the next segment
 
             // 1. Render the Mount Limit Line
             const positionFromStartOfSpan = T_MountLimit_sec - minTime;
@@ -278,7 +273,6 @@
                 `;
                 
                 timelineChart.appendChild(segmentElement);
-                currentPosition += width;
             });
             
             // Re-center the meridian line
@@ -298,7 +292,6 @@
             // 1. Get User Inputs (converted to seconds where necessary)
             const T1_min = parseFloat(document.getElementById('t1').value) || 0;
             const T2_min = parseFloat(document.getElementById('t2').value) || 0;
-            // T_Settle removed
             const T_Pause_min = parseFloat(document.getElementById('t_pause').value) || 0;
             const T_End_Exp = parseFloat(document.getElementById('t_end_exp').value) || 0; // Scenario slider value
             const T_MountLimit_min = parseFloat(document.getElementById('t_mount_limit').value) || 0; 
@@ -398,8 +391,6 @@
             });
             current_time = t_slew_end;
 
-            // Scope Settle segment removed
-
             // 3. Resuming Imaging
             segments.push({
                 name: 'IMAGING RESUMES', 
@@ -432,8 +423,9 @@
                 
                 <hr class="my-3 border-green-200">
 
-                <p><strong>Pre-Flip Wait Time ($T_{\\text{Wait}}$):</strong> <span class="font-mono text-wait-orange text-lg">${formatTime(T_Wait)}</span></p>
-                <p><strong>Post-Flip Recovery ($T_{\\text{PostFlip}}$):</strong> <span class="font-mono text-slew-blue text-lg">${formatTime(T_PostFlip)}</span> (Slew Time Only)</p>
+                <!-- FIX: Removed LaTeX markup for clean display -->
+                <p><strong>Pre-Flip Wait Time (T_Wait):</strong> <span class="font-mono text-wait-orange text-lg">${formatTime(T_Wait)}</span></p>
+                <p><strong>Post-Flip Recovery (T_PostFlip):</strong> <span class="font-mono text-slew-blue text-lg">${formatTime(T_PostFlip)}</span> (Slew Time Only)</p>
                 
                 <hr class="my-3 border-green-200">
 
