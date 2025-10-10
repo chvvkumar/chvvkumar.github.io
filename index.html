@@ -260,14 +260,14 @@
         <div class="grid gap-4 mb-8 input-grid">
             <!-- T1 Input: Minutes after meridian -->
             <div class="input-card rounded-xl">
-                <label for="t1" class="block text-sm font-medium text-gray-200">Flip Earliest Start (T1)</label>
+                <label for="t1" class="block text-sm font-medium text-gray-200">Minutes After Meridian (T1)</label>
                 <input type="number" id="t1" value="2" min="0" oninput="calculateFlip()" class="input-field rounded-lg">
                 <p class="input-description">Minutes after meridian when the flip *can* start.</p>
             </div>
 
             <!-- T2 Input: Max. minutes after meridian -->
             <div class="input-card rounded-xl">
-                <label for="t2" class="block text-sm font-medium text-gray-200">Flip Software Deadline (T2)</label>
+                <label for="t2" class="block text-sm font-medium text-gray-200">Max. Minutes After Meridian (T2)</label>
                 <input type="number" id="t2" value="15" min="0" oninput="calculateFlip()" class="input-field rounded-lg">
                 <p class="input-description">Max minutes after meridian the software will attempt to flip.</p>
             </div>
