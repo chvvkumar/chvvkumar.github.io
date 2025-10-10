@@ -3,97 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meridian Flip Timeline Simulator</title>
+    <title>Meridian Flip Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Define custom colors/classes for dark theme segments */
-        .bg-primary-green\/70 { background-color: rgba(16, 185, 129, 0.7); } /* Green 500 w/ opacity */
-        .bg-primary-green\/90 { background-color: rgba(16, 185, 129, 0.9); } /* Green 500 w/ opacity */
-        .bg-wait-orange { background-color: #f97316; } /* Orange 600 */
-        .bg-slew-blue { background-color: #3b82f6; } /* Blue 500 */
-        .bg-downtime-red { background-color: #ef4444; } /* Red 500 */
+        .bg-primary-green\/70 { background-color: rgba(16, 185, 129, 0.7); }
+        .bg-wait-orange { color: #f97316; }
+        .bg-slew-blue { color: #3b82f6; }
+        .bg-downtime-red { color: #ef4444; }
         .text-downtime-red { color: #ef4444; }
         .text-wait-orange { color: #f97316; }
         .text-slew-blue { color: #3b82f6; }
 
-
-        /* Custom styles for the timeline */
-        .timeline-segment {
-            transition: all 0.3s ease-out;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); /* Darker shadow for contrast */
-            min-width: 3px; /* Ensure visibility */
-            cursor: pointer;
-        }
-        .timeline-segment:hover .tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-        .tooltip {
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 50;
-            /* Dark theme tooltip background */
-            background-color: #1f2937; 
-            border: 1px solid #4b5563;
-        }
-        /* Meridian Line (t=0) - Amber */
-        .meridian-line {
-            width: 4px;
-            height: 100%;
-            background-color: #f59e0b; /* Amber 500 */
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-        }
-        .meridian-line::after {
-            content: 'MERIDIAN (t=0)';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translate(-50%, -120%);
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #f59e0b;
-            text-align: center;
-            width: 100px;
-        }
-        /* Timeline Container */
-        .timeline-container {
-            position: relative;
-            height: 300px; 
-            display: flex;
-            align-items: center;
-            overflow-x: auto; /* Allow horizontal scrolling only */
-            border: 2px solid #374151; /* Gray 700 border */
-            border-radius: 8px;
-            padding: 1rem 0;
-            background-color: #1f2937; /* Gray 800 background */
-        }
-        
-        /* Input Field Styling for Dark Theme */
-        input[type="number"], input[type="range"] {
-            background-color: #374151; /* Gray 700 */
-            border-color: #4b5563; /* Gray 600 */
-            color: #f3f4f6; /* Light text */
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            background: #60a5fa; /* Blue 400 */
-        }
-        input[type="range"]::-moz-range-thumb {
-            background: #60a5fa; /* Blue 400 */
+        /* Input Field Styling */
+        input[type="number"] {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #f3f4f6;
         }
 
-        /* Time Axis Styles (New Feature) */
+        /* Time Axis Styles (Static and Taller) */
         .time-axis-container {
             position: relative;
             width: 100%;
-            height: 100px; 
+            height: 280px; 
             margin-top: 1rem;
-            overflow-x: hidden; 
-            cursor: grab;
+            overflow: hidden; 
+            border: 2px solid #374151; 
+            border-radius: 8px;
+            background-color: #1f2937; 
+            padding: 1rem 0;
         }
         .time-axis-container:active {
             cursor: grabbing;
@@ -104,25 +43,32 @@
             height: 100%;
             left: 0;
             top: 0;
+            width: 100%; 
         }
         .time-axis-line {
             position: absolute;
             width: 100%;
             height: 2px;
-            background-color: #f87171; /* Red 400 */
+            background-color: #f87171; 
             top: 50%;
             transform: translateY(-50%);
         }
-        .time-marker {
+        
+        /* Vertical Indicator Lines (Flip, Meridian, Mount Limit) */
+        .flip-line, .meridian-line, .mount-limit-line {
             position: absolute;
             width: 2px;
-            height: 15px;
-            background-color: #f87171;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 20;
+            height: 80%; 
+            top: 10%; 
+            transform: translateX(-50%);
+            z-index: 10;
         }
-        /* Marker Label Placements */
+        .flip-line { background-color: #3b82f6; } /* Blue */
+        .meridian-line { background-color: #f59e0b; width: 3px; } /* Yellow/Orange */
+        .mount-limit-line { background-color: #f87171; width: 2px; border-left: 2px dashed #f87171; } /* Reddish */
+
+
+        /* Markers and Labels */
         .time-marker-label {
             position: absolute;
             left: 50%;
@@ -130,117 +76,179 @@
             font-size: 0.75rem;
             text-align: center;
             width: 100px;
-        }
-        .label-top {
-            bottom: 100%;
-            transform: translateX(-50%) translateY(5px);
-        }
-        .label-bottom {
-            top: 100%;
-            transform: translateX(-50%) translateY(-5px);
+            z-index: 30; 
         }
 
-        .meridian-axis-marker {
-            background-color: #f59e0b;
-            height: 30px;
-            width: 3px;
-            top: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .meridian-axis-marker .time-marker-label {
+        /* --- TOP LABELS (Meridian, Flip Starts, Last Sub Start) --- */
+        .label-meridian {
             color: #f59e0b;
             font-weight: bold;
-            bottom: 100%; /* Keep meridian label on top */
-            transform: translateX(-50%) translateY(5px);
+            bottom: 100%; 
+            transform: translateX(-50%) translateY(40px);
+        }
+        .flip-start-label-main {
+            color: #3b82f6;
+            font-weight: bold;
+            bottom: 100%;
+            transform: translateX(-50%) translateY(40px);
+        }
+        .sub-start-label {
+            color: #4ade80; /* Last Sub Start is GREEN and on TOP */
+            font-weight: normal;
+            bottom: 100%;
+            transform: translateX(-50%) translateY(40px); 
+        }
+        
+        /* --- BOTTOM LABELS (Mount Limit, Last Sub End) --- */
+        .label-mount-limit {
+            color: #f87171; 
+            font-weight: bold;
+            top: 100%; 
+            transform: translateX(-50%) translateY(-40px); 
+        }
+        .sub-end-label {
+            color: #f87171; /* Last Sub End is RED and on BOTTOM */
+            font-weight: normal;
+            top: 100%;
+            transform: translateX(-50%) translateY(-40px); 
         }
 
         .flip-zone {
             position: absolute;
             height: 80%;
             top: 10%;
-            background-color: rgba(59, 130, 246, 0.15); /* Blue 500 with opacity */
+            background-color: rgba(59, 130, 246, 0.15); 
             border-left: 1px dashed #3b82f6;
             border-right: 1px dashed #3b82f6;
         }
-        /* FIX: Explicit height for the help text container to ensure alignment */
-        .input-help-container {
-            height: 2rem; /* Sufficient height for two lines of text at 0.75rem font size */
+        .flip-zone-label {
+            position: absolute;
+            top: 5px; 
+            left: 50%;
+            transform: translate(-50%, 0);
+            width: 100%;
+            text-align: center;
+            font-size: 0.875rem;
+            font-weight: bold;
+            color: #60a5fa; 
+            white-space: nowrap;
+            z-index: 30;
+        }
+
+        /* Sub Exposure Base Styles */
+        .sub-exposure {
+            position: absolute;
+            height: 20px;
+            top: 50%; 
+            transform: translateY(-50%);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            transition: left 0.3s ease-out, opacity 0.3s ease-in-out, width 0.1s; 
+        }
+        /* Specific Styles */
+        #last-sub-exposure {
+            background-color: rgba(16, 185, 129, 0.9);
+            cursor: grab;
+            z-index: 40;
+        }
+        .previous-sub {
+            background-color: rgba(16, 185, 129, 0.4);
+            z-index: 39;
+        }
+
+        /* Input Field Styling for vertical stacking */
+        .input-card {
+            background-color: #1f2937; 
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column; 
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            font-size: 1.125rem;
+            font-family: monospace;
+            text-align: right;
+            margin-top: 0.25rem;
+            color: #f3f4f6;
+            background-color: #374151;
+        }
+        .input-description {
+            color: #9ca3af; 
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            height: 1.5rem; 
+        }
+        /* Responsive Grid for Inputs */
+        @media (min-width: 768px) {
+            .input-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
         }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 p-6 min-h-screen font-sans">
 
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-extrabold mb-8 text-blue-400">N.I.N.A. Meridian Flip Simulator</h1>
+    <div class="max-w-4xl mx-auto w-full">
+        <h1 class="text-3xl font-extrabold mb-8 text-blue-400 text-center">N.I.N.A. Meridian Flip Simulator</h1>
 
-        <!-- Input Parameters -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            <!-- T1 Input -->
-            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
-                <label for="t1" class="block text-sm font-medium text-gray-400 mb-1">Minutes after meridian (T1)</label>
-                <input type="number" id="t1" value="2" min="0" oninput="calculateFlip()"
-                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <div class="input-help-container">
-                    <p class="text-xs text-gray-500 mt-1">Flip earliest start time (min)</p>
-                </div>
+        <!-- Input Parameters (Responsive Grid Layout) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 input-grid">
+            <!-- T1 Input: Minutes after meridian -->
+            <div class="input-card">
+                <label for="t1" class="block text-base font-medium text-gray-200">Minutes after meridian (T1)</label>
+                <input type="number" id="t1" value="2" min="0" oninput="calculateFlip()" class="input-field">
+                <p class="input-description">Flip earliest start time (min)</p>
             </div>
 
-            <!-- T2 Input -->
-            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
-                <label for="t2" class="block text-sm font-medium text-gray-400 mb-1">Max. minutes after meridian (T2)</label>
-                <input type="number" id="t2" value="15" min="0" oninput="calculateFlip()"
-                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <div class="input-help-container">
-                    <p class="text-xs text-gray-500 mt-1">Flip software deadline (min)</p>
-                </div>
+            <!-- T2 Input: Max. minutes after meridian -->
+            <div class="input-card">
+                <label for="t2" class="block text-base font-medium text-gray-200">Max. minutes after meridian (T2)</label>
+                <input type="number" id="t2" value="15" min="0" oninput="calculateFlip()" class="input-field">
+                <p class="input-description">Flip software deadline (min)</p>
             </div>
 
             <!-- Pause Before Meridian Input -->
-            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
-                <label for="t_pause" class="block text-sm font-medium text-gray-400 mb-1">Pause before meridian</label>
-                <input type="number" id="t_pause" value="0" min="0" oninput="calculateFlip()"
-                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <div class="input-help-container">
-                    <p class="text-xs text-gray-500 mt-1">Stops tracking before Meridian (min)</p>
-                </div>
+            <div class="input-card">
+                <label for="t_pause" class="block text-base font-medium text-gray-200">Pause before meridian</label>
+                <input type="number" id="t_pause" value="0" min="0" oninput="calculateFlip()" class="input-field">
+                <p class="input-description">Stops tracking before Meridian (min)</p>
             </div>
 
-            <!-- Mount Tracking Limit Input -->
-            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
-                <label for="t_mount_limit" class="block text-sm font-medium text-gray-400 mb-1">Max. Mount Tracking Past Meridian</label>
-                <input type="number" id="t_mount_limit" value="20" min="0" oninput="calculateFlip()"
-                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <div class="input-help-container">
-                    <p class="text-xs text-gray-500 mt-1">Absolute physical/driver limit (min)</p>
-                </div>
+            <!-- Max. Mount Tracking Past Meridian Input -->
+            <div class="input-card">
+                <label for="t_mount_limit" class="block text-base font-medium text-gray-200">Max. Mount Tracking Past Meridian</label>
+                <input type="number" id="t_mount_limit" value="20" min="0" oninput="calculateFlip()" class="input-field">
+                <p class="input-description">Absolute physical/driver limit (min)</p>
             </div>
             
              <!-- Exposure Duration Input -->
-             <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
-                <label for="t_exposure" class="block text-sm font-medium text-gray-400 mb-1">Exposure Duration</label>
-                <input type="number" id="t_exposure" value="300" min="1" oninput="calculateFlip()"
-                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <div class="input-help-container">
-                    <p class="text-xs text-gray-500 mt-1">Length of the individual sub-exposure (sec)</p>
-                </div>
+             <div class="input-card">
+                <label for="t_exposure" class="block text-base font-medium text-gray-200">Exposure Duration</label>
+                <input type="number" id="t_exposure" value="420" min="1" oninput="calculateFlip()" class="input-field">
+                <p class="input-description">Length of the individual sub-exposure (sec)</p>
             </div>
         </div>
-
-        <!-- Timeline Visualization -->
-        <h2 class="text-xl font-bold mb-3 text-gray-200">Timeline Visualization (<span class="text-downtime-red">Total Downtime: <span id="total-time-min">0s</span></span>)</h2>
-        <div id="timeline-chart" class="timeline-container w-full">
-            <!-- Segments and Meridian Line are rendered here by JavaScript -->
-        </div>
-        <p class="text-xs text-gray-500 text-center mt-2">Timeline is scaled dynamically. Hover over segments for detail. (Scroll horizontally if needed)</p>
-
-        <!-- Key Timing Events (Zoomable Axis) -->
-        <h2 class="text-xl font-bold mb-3 mt-8 text-gray-200">Key Timing Events (Zoomable Reference Axis)</h2>
+        
+        <!-- Key Timing Events (Static Reference Axis with Draggable Sub) -->
+        <h2 class="text-xl font-bold mb-3 mt-8 text-gray-200">Key Timing Events (Draggable Sub-Exposure Scenario)</h2>
         <div id="time-axis-chart" class="time-axis-container">
             <div id="time-axis-wrapper" class="time-axis-line-wrapper">
+                 <!-- The sub elements are now generated/re-used dynamically -->
                 <!-- Time axis line and markers are rendered here by JavaScript -->
             </div>
         </div>
-        <p class="text-xs text-gray-500 text-center mt-2">Use scroll wheel to **zoom** and click-and-drag to **pan** this axis.</p>
+        <p class="text-xs text-gray-500 text-center mt-2">Click and drag the **Last Sub** box (the darkest green box) to anchor your exposure sequence.</p>
 
 
         <!-- Flip Outcome Summary -->
@@ -253,25 +261,19 @@
     </div>
 
     <script>
-        // State variables for Pan and Zoom on the Time Axis
-        let axisCurrentScale = 1.0;
+        // --- Drag State Variables ---
         let isDragging = false;
-        let startX;
-        let startScrollLeft;
+        let t_SubEnd_Manual = 420; // Time coordinate where the user-dragged sub ends (Default: 7m 0s)
+        let initialScaleFactor = 0;
+        let maxTime = 600; 
 
-        // System Constants (Used for Post-Flip calculation)
+        // System Constants
         const SYSTEM_CONSTANTS = {
             T_Slew: 45,       // Mount Slew/Flip Time (seconds)
         };
         
-        // Fixed pixel width for the main visualization bar chart
-        const FIXED_TIMELINE_WIDTH_PX = 2000; 
+        // --- Utility Functions ---
 
-        /**
-         * Converts a time in seconds to a formatted string (e.g., 5m 30s).
-         * @param {number} totalSeconds
-         * @returns {string}
-         */
         function formatTime(totalSeconds) {
             const sign = totalSeconds < 0 ? "-" : "";
             const absSeconds = Math.abs(totalSeconds);
@@ -286,45 +288,48 @@
             return `${sign}${secPart}s`;
         }
         
+        // --- Rendering and Positioning Functions ---
+
         /**
-         * Renders the zoomable/pannable time axis below the main timeline.
+         * Renders the static time axis, markers, and the draggable sub chain.
          */
-        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec) {
+        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec, T_Exposure, t_SubChainStart) {
             const axisChart = document.getElementById('time-axis-chart');
             const axisWrapper = document.getElementById('time-axis-wrapper');
-            axisWrapper.innerHTML = '<div class="time-axis-line"></div>';
+            
+            if (!axisChart || !axisWrapper) return;
 
-            const containerWidth = axisChart.clientWidth || 800;
-            const contentWidthBase = containerWidth * 0.95; 
-
-            // --- Determine Scale and Span for Zoom ---
-            const maxTime = Math.max(
-                Math.abs(t_DowntimeStart), 
-                Math.abs(t_FlipStart), 
-                T_Effective_Deadline,
-                T_MountLimit_sec, // Include T_MountLimit_sec in the span calculation
-                300 // Minimum span of 5 minutes (300s) on either side
+            // --- Determine Scale and Span (Static for this chart) ---
+            const inputMaxTime = Math.max(
+                Math.abs(T_Effective_Deadline), 
+                Math.abs(T_MountLimit_sec), 
+                Math.abs(t_SubChainStart), // Use chain start time for left limit
+                300
             ); 
+            maxTime = inputMaxTime + 60; // Add 1 minute buffer on each side
             
-            const timeSpan = maxTime * 2; // Time span from -maxTime to +maxTime
-            const baseScaleFactor = contentWidthBase / timeSpan;
+            const timeSpan = maxTime * 2; 
+            const containerWidth = axisChart.clientWidth || 800;
+            const contentWidth = containerWidth * 0.95; 
             
-            // Apply current zoom scale
-            const currentScaleFactor = baseScaleFactor * axisCurrentScale;
-            const scaledContentWidth = timeSpan * currentScaleFactor;
+            initialScaleFactor = contentWidth / timeSpan; // Fixed scale for static axis
             
-            // Set the wrapper width
-            axisWrapper.style.width = `${scaledContentWidth}px`;
+            axisWrapper.style.width = `${containerWidth}px`;
             
-            // --- Calculate Positions ---
-            const contentStart = (maxTime * currentScaleFactor);
-
             // Position of the meridian (t=0)
-            const meridianPos = contentStart; 
+            const meridianPos = (maxTime * initialScaleFactor); 
 
             // Helper function to convert time to pixel position
-            const timeToPos = (time) => (time + maxTime) * currentScaleFactor;
+            const timeToPos = (time) => (time + maxTime) * initialScaleFactor;
 
+            // --- Clear and Redraw Static Elements ---
+            axisWrapper.innerHTML = '';
+            
+            // 1. Draw Red Axis Line
+            const axisLine = document.createElement('div');
+            axisLine.className = 'time-axis-line';
+            axisWrapper.appendChild(axisLine);
+            
             // --- Render FLIP ZONE ---
             if (T_Effective_Deadline > T1_sec) {
                 const flipZoneStartPos = timeToPos(T1_sec);
@@ -336,387 +341,424 @@
                 flipZone.style.left = `${flipZoneStartPos}px`;
                 flipZone.style.width = `${flipZoneWidth}px`;
                 
-                // Add a label for the zone
-                flipZone.innerHTML = `
-                    <span class="absolute top-0 mt-2 left-1/2 transform -translate-x-1/2 text-xs font-bold text-blue-300">
-                        FLIP ZONE (${formatTime(T1_sec)} to ${formatTime(T_Effective_Deadline)})
-                    </span>
-                `;
+                // Add label above the zone
+                const zoneLabel = document.createElement('span');
+                zoneLabel.className = 'flip-zone-label';
+                zoneLabel.style.top = '10px'; /* Adjusted placement */
+                zoneLabel.innerHTML = `FLIP ZONE (${formatTime(T1_sec)} to ${formatTime(T_Effective_Deadline)})`;
 
+                flipZone.appendChild(zoneLabel);
                 axisWrapper.appendChild(flipZone);
             }
             
+            // --- New: Draw Flip Start Vertical Line ---
+            const flipLine = document.createElement('div');
+            flipLine.className = 'flip-line';
+            flipLine.style.left = `${timeToPos(t_FlipStart)}px`;
+            axisWrapper.appendChild(flipLine);
+
+            // --- Draw Meridian Line ---
+            const meridianLine = document.createElement('div');
+            meridianLine.className = 'meridian-line';
+            meridianLine.style.left = `${meridianPos}px`;
+            axisWrapper.appendChild(meridianLine);
+
+            // --- Draw Mount Limit Line ---
+            const mountLimitLine = document.createElement('div');
+            mountLimitLine.className = 'mount-limit-line';
+            mountLimitLine.style.left = `${timeToPos(T_MountLimit_sec)}px`;
+            axisWrapper.appendChild(mountLimitLine);
+
+
             // Marker data points
             const timeMarkers = [
-                // Sub Exposure Markers (Top)
-                { time: t_StartLastExp, label: 'Last Sub Start', color: 'text-primary-green/70', special: 'sub-start' },
-                { time: t_DowntimeStart, label: 'Last Sub End', color: 'text-red-400', special: 'sub-end' },
-                
-                // Downtime Markers (Bottom/Alternating)
-                { time: t_FlipStart, label: 'Flip Starts', color: 'text-blue-400', special: 'flip' },
-                // Mount Limit Marker (Now included)
-                { time: T_MountLimit_sec, label: 'Mount Limit', color: 'text-yellow-400', special: 'limit' }, 
+                // Custom markers for Meridian and Mount Limit text
+                { time: 0, label: 'Meridian', color: 'text-yellow-500', placement: 'label-meridian' },
+                { time: T_MountLimit_sec, label: 'Mount Limit', color: 'text-red-400', placement: 'label-mount-limit' }, 
+                { time: t_FlipStart, label: 'Flip Starts', color: 'text-blue-400', placement: 'flip-start-label-main' }, 
             ];
-
-            // Use an index to alternate placement (0 = top, 1 = bottom)
-            let placementIndex = 0; 
             
-            // 1. Render Meridian Marker
-            const meridianMarker = document.createElement('div');
-            meridianMarker.className = 'time-marker meridian-axis-marker';
-            meridianMarker.style.left = `${meridianPos}px`;
-            meridianMarker.innerHTML = `<span class="time-marker-label label-top">Meridian</span>`;
-            axisWrapper.appendChild(meridianMarker);
-            
-            // 2. Render Key Time Markers
+            // 3. Render Key Time Markers (Static lines and specific labels)
             timeMarkers.forEach(marker => {
                 const markerTime = marker.time;
                 const position = timeToPos(markerTime);
                 
-                // Skip rendering Flip Starts marker if it's right on the meridian and T1 is 0
-                if (Math.abs(markerTime) < 1 && marker.label === 'Flip Starts' && Math.abs(T1_sec) < 1) {
-                    return; 
-                }
-
-                const markerElement = document.createElement('div');
-                markerElement.className = `time-marker ${marker.color.replace('text-', 'bg-')}`;
-                markerElement.style.left = `${position}px`;
+                // Skip markers that fall outside the main visual area or are redundant
+                if (position < 0 || position > containerWidth) return;
                 
                 const markerLabel = document.createElement('span');
                 
-                // Force sub markers to top, Deadline to bottom, and alternate the rest
-                let placementClass;
-                if (marker.special === 'sub-start' || marker.special === 'sub-end') {
-                    placementClass = 'label-top';
-                } else if (marker.special === 'limit') {
-                    placementClass = 'label-bottom';
-                } else {
-                    // Alternate placement for Flip Start and Tracking Stops
-                    placementClass = (marker.time < 0) ? 'label-bottom' : 'label-top';
+                let labelText = marker.label;
+                let placementClass = marker.placement;
+                let textColorClass = marker.color;
+                
+                // Add time coordinate to labels if it's not the Meridian
+                if (marker.label !== 'Meridian') {
+                    labelText += `<br/>(${formatTime(markerTime)})`;
+                }
+
+                markerLabel.className = `time-marker-label ${textColorClass} ${placementClass}`;
+                markerLabel.style.left = `${position}px`;
+                markerLabel.innerHTML = labelText;
+                
+                axisWrapper.appendChild(markerLabel);
+            });
+            
+            // --- Dynamic Sub Chain Generation ---
+            const subWidth = T_Exposure * initialScaleFactor;
+
+            // Find the start time of the specific sub that triggers the flip (t_StartLastExp)
+            let currentSubEnd = t_StartLastExp;
+            
+            // Generate previous subs until they fall off the left side of the screen
+            let i = 1;
+            while (true) {
+                const T_PrevSubStart = currentSubEnd - T_Exposure;
+                const T_PrevSubEnd = currentSubEnd;
+                const prevSubStartPos = timeToPos(T_PrevSubStart);
+
+                // Stop drawing if the previous sub ends before the earliest point we care about 
+                if (T_PrevSubEnd < -maxTime) { // Use maxTime for cleaner clipping
+                    break; 
+                }
+
+                if (prevSubStartPos < 0) { // Stop drawing if the sub starts off screen
+                    break;
                 }
                 
-                markerLabel.className = `time-marker-label ${marker.color} ${placementClass}`;
-                markerLabel.innerHTML = `${marker.label}<br/>(${formatTime(markerTime)})`;
+                let subElement = document.createElement('div');
+                subElement.className = 'sub-exposure previous-sub';
+                subElement.style.left = `${prevSubStartPos}px`;
+                subElement.style.width = `${subWidth}px`;
+                subElement.textContent = `Sub N-${i} (${formatTime(T_Exposure)})`;
+                subElement.style.opacity = Math.max(0.1, 1 - (i * 0.2)); // Fade opacity further back
                 
-                markerElement.appendChild(markerLabel);
-                axisWrapper.appendChild(markerElement);
+                axisWrapper.appendChild(subElement);
 
-                // Increment index only if we rendered the marker 
-                placementIndex++;
-            });
+                currentSubEnd = T_PrevSubStart;
+                i++;
+            }
 
-            // Center the view on the Meridian initially or after zoom
-            const scrollCenterPosition = meridianPos - (containerWidth / 2);
-            axisChart.scrollLeft = scrollCenterPosition;
+            // --- Add the Draggable/Last Sub (The triggering sub) ---
+            let subElement = document.createElement('div');
+            subElement.id = 'last-sub-exposure';
+            subElement.className = 'sub-exposure';
+            subElement.style.left = `${timeToPos(t_StartLastExp)}px`;
+            subElement.style.width = `${subWidth}px`;
+            subElement.textContent = formatTime(T_Exposure); 
+            subElement.style.cursor = 'grab'; // Ensure it's grabable
+
+            // Reapply fade transition on snap 
+            const currentSubStartPos = parseFloat(subElement.style.left.replace('px', '')) || 0;
+            const snapThreshold = 1; // 1 pixel difference means a snap is needed
+
+            if (Math.abs(currentSubStartPos - timeToPos(t_StartLastExp)) > snapThreshold) {
+                subElement.style.opacity = '0'; 
+                setTimeout(() => {
+                    const el = document.getElementById('last-sub-exposure');
+                    if (el) el.style.opacity = '1';
+                }, 50); // Small delay before snapping and fading in
+            }
+
+            axisWrapper.appendChild(subElement);
+            
+            // --- Add Sub Start/End Labels (Aligned to the exact time coordinate) ---
+            
+            // Last Sub Start Label (Above Axis)
+            const startLabel = document.createElement('span');
+            startLabel.className = 'time-marker-label sub-start-label'; 
+            startLabel.innerHTML = `Last Sub Start<br/>(${formatTime(t_StartLastExp)})`;
+            startLabel.style.left = `${timeToPos(t_StartLastExp)}px`;
+            startLabel.style.color = '#4ade80'; // Green color for start
+            startLabel.style.fontWeight = 'normal';
+            startLabel.style.bottom = '100%'; // Position above axis
+            startLabel.style.transform = 'translateX(-50%) translateY(40px)';
+
+            axisWrapper.appendChild(startLabel);
+
+            // Last Sub End Label (Below Axis)
+            const endLabel = document.createElement('span');
+            endLabel.className = 'time-marker-label sub-end-label'; 
+            endLabel.innerHTML = `Last Sub End<br/>(${formatTime(t_DowntimeStart)})`;
+            endLabel.style.left = `${timeToPos(t_DowntimeStart)}px`;
+            endLabel.style.color = '#f87171'; // Red color for end
+            endLabel.style.fontWeight = 'normal';
+            endLabel.style.top = '100%'; // Position below axis
+            endLabel.style.transform = 'translateX(-50%) translateY(-40px)';
+            
+            axisWrapper.appendChild(endLabel);
+
+
+            // Re-apply drag listeners to the newly created element
+            setupDrag();
+
+            // Center the view on the Meridian initially
+            axisChart.scrollLeft = meridianPos - (containerWidth / 2);
         }
 
+        // --- Drag Handlers (Simplified and uses new Sub Logic) ---
+        let subElement, axisChart;
 
-        /**
-         * Renders the main non-zoomable, scrollable bar chart visualization.
-         */
-        function renderTimeline(segments, minTime, totalTimeSpan) {
-            const timelineChart = document.getElementById('timeline-chart');
-            // Clear chart and add meridian line back
-            timelineChart.innerHTML = '<div class="meridian-line"></div>'; 
-            
-            const containerWidth = timelineChart.clientWidth || 800;
-            
-            // The scale factor is fixed based on the total time span (in seconds) 
-            // and the fixed pixel width defined globally.
-            const scaleFactor = FIXED_TIMELINE_WIDTH_PX / totalTimeSpan;
-            const scaledContentWidth = FIXED_TIMELINE_WIDTH_PX;
-            
-            const innerWrapper = document.createElement('div');
-            innerWrapper.style.position = 'absolute';
-            innerWrapper.style.height = '100%';
-            innerWrapper.style.width = `${scaledContentWidth + 100}px`; // Add buffer
-            innerWrapper.style.left = '0';
-            innerWrapper.style.top = '0';
-
-            const leftPadding = 50; // Fixed padding for visual comfort
-            const meridianOffsetFromStart = Math.abs(minTime) * scaleFactor;
-            const meridianOffsetPixels = meridianOffsetFromStart + leftPadding;
-            
-            // 1. Render the segments onto the inner wrapper
-            segments.forEach((segment) => {
-                const duration = segment.duration;
-                const width = Math.max(3, duration * scaleFactor); 
-                
-                const segmentElement = document.createElement('div');
-                // Ensure tailwind classes are correctly applied for styling and hover effects
-                segmentElement.className = `timeline-segment ${segment.color} h-12 absolute flex items-center justify-center text-white text-xs whitespace-nowrap px-1 font-semibold`;
-                
-                const positionFromStartOfSpan = segment.time_start - minTime;
-                const positionOffset = positionFromStartOfSpan * scaleFactor + leftPadding;
-
-                segmentElement.style.left = `${positionOffset}px`;
-                segmentElement.style.width = `${width}px`;
-                segmentElement.style.zIndex = '20'; 
-
-                const timeStartLabel = segment.time_start < 0 ? `${formatTime(segment.time_start)} (Before Meridian)` : `${formatTime(segment.time_start)} (After Meridian)`;
-                const timeEndLabel = segment.time_end < 0 ? `${formatTime(segment.time_end)} (Before Meridian)` : `${formatTime(segment.time_end)} (After Meridian)`;
-
-                // Re-added the tooltip structure
-                segmentElement.innerHTML = `
-                    <span class="text-shadow-sm pointer-events-none">${segment.short_name}</span>
-                    <div class="tooltip absolute bottom-full mb-3 p-3 bg-gray-800 text-white rounded-md shadow-2xl text-center text-sm">
-                        <p class="font-bold text-lg mb-1">${segment.name}</p>
-                        <p>Duration: <span class="font-mono">${formatTime(duration)}</span></p>
-                        <p>Starts at: <span class="font-mono">${timeStartLabel}</span></p>
-                        <p>Ends at: <span class="font-mono">${timeEndLabel}</span></p>
-                    </div>
-                `;
-                
-                innerWrapper.appendChild(segmentElement);
-            });
-            
-            timelineChart.appendChild(innerWrapper);
-
-            // Re-center the meridian line on the inner wrapper's coordinates
-            const meridianLine = document.querySelector('.meridian-line');
-            meridianLine.style.left = `${meridianOffsetPixels}px`;
-
-            // Calculate the necessary scroll position to center the meridian line
-            const scrollCenterPosition = meridianOffsetPixels - (containerWidth / 2);
-            timelineChart.scrollLeft = scrollCenterPosition;
+        function handleMouseDown(e) {
+            // Check if the actual last-sub-exposure element was clicked
+            if (e.target.id !== 'last-sub-exposure') return;
+            e.preventDefault();
+            isDragging = true;
+            e.target.style.cursor = 'grabbing';
+            axisChart.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
         }
 
-        // --- Pan and Zoom Event Handlers for Time Axis ---
-        function setupPanZoom() {
-            const chart = document.getElementById('time-axis-chart');
-            if (!chart) return; // Add check for safety
+        function handleMouseMove(e) {
+            if (!isDragging) return;
+            const rect = axisChart.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left + axisChart.scrollLeft;
 
-            // Mouse Down (Start Drag)
-            chart.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                chart.style.cursor = 'grabbing';
-                startX = e.pageX - chart.offsetLeft;
-                startScrollLeft = chart.scrollLeft;
-                e.preventDefault();
-            });
+            const timeSpan = maxTime * 2;
+            const containerWidth = axisChart.clientWidth || 800;
+            const contentWidth = containerWidth * 0.95;
+            const scaleFactor = contentWidth / timeSpan; 
 
-            // Mouse Leave/Up (Stop Drag)
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-                chart.style.cursor = 'grab';
-            });
+            let T_Exposure = parseFloat(document.getElementById('t_exposure').value) || 1; 
 
-            // Mouse Move (Dragging)
-            chart.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                e.preventDefault();
-                const x = e.pageX - chart.offsetLeft;
-                const walk = (x - startX) * 1.5; // Pan speed multiplier
-                chart.scrollLeft = startScrollLeft - walk;
-            });
+            // Calculate time equivalent of the mouse X position
+            let t_cursor = (mouseX / scaleFactor) - maxTime;
+            
+            // Anchor the start of the sub to the cursor
+            let t_new_start = t_cursor;
+            let t_new_end = t_new_start + T_Exposure;
+            
+            t_SubEnd_Manual = t_new_end;
+            calculateFlip(false); // Do not reset scale during drag
+        }
 
-            // Scroll (Zoom)
-            chart.addEventListener('wheel', (e) => {
-                e.preventDefault();
+        function handleMouseUp() {
+            isDragging = false;
+            // The sub element must be re-fetched as it was replaced in renderTimeAxis
+            const currentSubElement = document.getElementById('last-sub-exposure');
+            if (currentSubElement) {
+                currentSubElement.style.cursor = 'grab';
+            }
+            axisChart.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            // Ensure final position is calculated after mouse up
+            calculateFlip();
+        }
 
-                const oldScale = axisCurrentScale;
-                const zoomFactor = -e.deltaY * 0.001;
-                
-                // Calculate new scale, clamping between 0.2 and 10.0
-                axisCurrentScale = Math.max(0.2, Math.min(10.0, axisCurrentScale + zoomFactor));
-                
-                // Get mouse position relative to chart
-                const rect = chart.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-
-                // Calculate the pixel position on the currently scaled timeline that is under the cursor
-                const pointToZoomOn = chart.scrollLeft + mouseX;
-
-                // Recalculate and re-render the timeline
-                calculateFlip(false); // Re-render without resetting currentScale
-
-                // Calculate the new scroll position to keep the pointToZoomOn fixed
-                const timeAxisWrapper = document.getElementById('time-axis-wrapper');
-                const newWidth = timeAxisWrapper ? timeAxisWrapper.scrollWidth : 0;
-                
-                if (newWidth === 0) return;
-
-                const ratio = newWidth / (newWidth / oldScale * axisCurrentScale);
-                const newScrollLeft = pointToZoomOn * ratio - mouseX;
-
-                // Apply the new scroll position
-                chart.scrollLeft = newScrollLeft;
-            });
+        function setupDrag() {
+            // Setup should run only once to attach listeners to the container
+            axisChart = document.getElementById('time-axis-chart');
+            
+            if (axisChart) {
+                // Ensure handlers are only attached once to the chart container
+                if (!axisChart.hasAttribute('data-listeners-attached')) {
+                    axisChart.addEventListener('mousedown', handleMouseDown);
+                    axisChart.setAttribute('data-listeners-attached', 'true');
+                }
+            }
         }
         
         /**
-         * Calculates the total downtime and generates the timeline data points.
+         * Calculates the total downtime and generates the data points based on manual sub placement.
          */
         function calculateFlip(resetScale = true) {
-            // Reset axis scale only on input changes, not during zoom
-            if (resetScale) {
-                axisCurrentScale = 1.0;
-            }
-
-            // 1. Get User Inputs (converted to seconds where necessary)
+            
+            // 1. Get User Inputs
             const t1Element = document.getElementById('t1');
             const t2Element = document.getElementById('t2');
             const tPauseElement = document.getElementById('t_pause');
             const tMountLimitElement = document.getElementById('t_mount_limit');
-            const tExposureElement = document.getElementById('t_exposure'); // New exposure input
+            const tExposureElement = document.getElementById('t_exposure'); 
             const summaryElement = document.getElementById('summary');
-            const totalTimeMinElement = document.getElementById('total-time-min');
             
-            // Safety checks for critical elements
-            if (!t1Element || !t2Element || !tExposureElement || !summaryElement || !totalTimeMinElement) {
-                console.error("Critical element missing, stopping calculation.");
+            if (!t1Element || !t2Element || !tExposureElement || !summaryElement) {
                 return;
             }
-
 
             const T1_min = parseFloat(t1Element.value) || 0;
             const T2_min = parseFloat(t2Element.value) || 0;
             const T_Pause_min = parseFloat(tPauseElement.value) || 0;
             const T_MountLimit_min = parseFloat(tMountLimitElement.value) || 0; 
-            const T_Exposure = parseFloat(tExposureElement.value) || 1; // Exposure duration in seconds (must be > 0)
+            const T_Exposure = parseFloat(tExposureElement.value) || 1; 
 
             // Convert to seconds
             const T1_sec = T1_min * 60;
             const T2_sec_software = T2_min * 60; 
             const T_MountLimit_sec = T_MountLimit_min * 60; 
             const T_Pause_sec = T_Pause_min * 60;
+            
+            // Fix: Initialize T_LastSubEnd_Anchor at the start of the function
+            let T_LastSubEnd_Anchor = t_SubEnd_Manual; 
 
+            // Set initial drag time if not yet set
+            if (T_LastSubEnd_Anchor === 420 && T_Exposure > 0) { // Initial state check
+                 T_LastSubEnd_Anchor = T_Exposure; 
+            }
 
             // --- Core Logic ---
 
-            // The effective absolute deadline (Mount Limit or T2)
             const T_Effective_Deadline = Math.min(T2_sec_software, T_MountLimit_sec);
 
             
-            let T_LatestEnd = 0;
+            let t_DowntimeStart = T_LastSubEnd_Anchor; // The sub end time set by drag
             let scenarioDescription = "";
 
-            if (T1_sec < T2_sec_software) {
-                // Scenario A: Flip Window (T1 < T2). Flip happens whenever the exposure ends between T1 and T2.
-                // The last exposure must START so it ends BEFORE T_Effective_Deadline (the hard stop).
-                T_LatestEnd = T_Effective_Deadline; 
-                scenarioDescription = `Flip Window (${formatTime(T1_sec)} to ${formatTime(T2_sec_software)}): Last exposure must end before effective deadline.`;
-            } else {
-                // Scenario B: Fixed Time Flip (T1 = T2). Flip happens precisely at T1.
-                // The last exposure must START so it ends BEFORE T1.
-                T_LatestEnd = T1_sec;
-                scenarioDescription = `Fixed Flip Time (${formatTime(T1_sec)}): Last exposure must end before T1.`;
-            }
-
-            // Now, integrate Pause Before Meridian (PBM). If PBM is set, the sequence must stop imaging 
-            // at the PBM time, regardless of T1/T2.
-            if (T_Pause_sec > 0) {
-                // If PBM is set, the sequence must stop imaging at -T_Pause_sec.
-                // The latest an exposure can end is at -T_Pause_sec.
-                // NOTE: We use T_LatestEnd = Math.min(T_LatestEnd, -T_Pause_sec) to respect the PBM stop time
-                // if it's earlier than the deadline, but this simple overwrite works for NINA's PBM design.
-                T_LatestEnd = -T_Pause_sec;
-                scenarioDescription = `Forced Pause (${formatTime(T_Pause_sec)} before meridian): Last exposure must end before PBM stop time.`;
-            }
-
-            // Calculate the actual start time of the last exposure
-            const t_StartLastExp = T_LatestEnd - T_Exposure;
+            // Find the start time of the sub chain anchored by drag
+            const t_SubChainStart_Raw = T_LastSubEnd_Anchor - T_Exposure;
             
-            // The time tracking actually stops is the end time of the last sub:
-            const t_DowntimeStart = T_LatestEnd;
-
-            // --- Determine Flip Start Time (t_FlipStart) and Wait Time (T_Wait) ---
             let t_FlipStart = 0;
             let T_Wait = 0;
+            
+            // --- Sequence Calculation Variables ---
+            let t_SequencedEnd = T_LastSubEnd_Anchor; // The time the sequence would end based on drag
+            let t_StartLastExp = t_SubChainStart_Raw; // The start time of the specific sub that causes the flip
+            
+            // Logic to find the *actual* triggering sub based on the anchored chain
+            if (T_Pause_sec > 0) {
+                 // Case A: PBM is set. (Hard stop at PBM time, then wait for T1)
+                const T_PBM_Deadline = -T_Pause_sec;
+                
+                // If the drag anchor is after the PBM deadline, clamp to PBM deadline
+                if (T_LastSubEnd_Anchor > T_PBM_Deadline) {
+                     t_SequencedEnd = T_PBM_Deadline; 
+                } else {
+                     t_SequencedEnd = T_LastSubEnd_Anchor;
+                }
 
-            if (T_Pause_sec > 0 || T1_sec >= T2_sec_software) {
-                // Case 1: PBM is set OR Fixed Time Flip (T1=T2). Must wait for T1.
+                scenarioDescription = `Forced Pause: Tracking must stop at PBM deadline (${formatTime(T_PBM_Deadline)}). System must WAIT for T1.`;
+                
+                // Flip must still wait for T1
+                t_DowntimeStart = t_SequencedEnd; // The moment tracking actually stops
+                t_StartLastExp = t_DowntimeStart - T_Exposure; // Start of the sub that ended at t_DowntimeStart
                 t_FlipStart = T1_sec; 
                 T_Wait = t_FlipStart - t_DowntimeStart;
 
-            } else { // T1 < T2 (Flip Window)
-                // Case 2: Flip Window. Flip immediately after last exposure ends, as long as it's not before T1.
-                t_FlipStart = Math.max(T1_sec, t_DowntimeStart);
+            } else if (T1_sec < T2_sec_software) { 
+                // Case B: Flip Window (Opportunistic Flip)
+                
+                let t_AnchorEnd = T_LastSubEnd_Anchor;
+                
+                // 1. Find the earliest sub in the chain that finishes AT or AFTER T1
+                let t_TriggerEnd = -Infinity;
+                let t_TriggerStart = -Infinity;
+                
+                // Start iterating backwards from the anchor point by multiples of exposure
+                let t_CurrentEnd = t_AnchorEnd;
+                
+                // Maximum 100 subs to prevent infinite loop
+                for (let i = 0; i < 100; i++) {
+                    const t_CurrentStart = t_CurrentEnd - T_Exposure;
+                    
+                    if (t_CurrentEnd <= T1_sec) {
+                         // The whole current sub finished before T1. Stop, the flip must wait for T1.
+                         break;
+                    }
+                    
+                    if (t_CurrentStart < -T_MountLimit_sec * 2) {
+                        // Gone too far back, break
+                        break; 
+                    }
+                    
+                    // If the sub ends within the window (T1 to Deadline), it's the optimal trigger.
+                    if (t_CurrentEnd <= T_Effective_Deadline) {
+                        t_TriggerEnd = t_CurrentEnd;
+                        t_TriggerStart = t_CurrentStart;
+                    }
+                    
+                    t_CurrentEnd = t_CurrentStart; // Move anchor to the start of this sub to check the previous one
+                }
+                
+                if (t_AnchorEnd > T_Effective_Deadline) {
+                    // Sub dragged too far past the deadline
+                    t_SequencedEnd = T_Effective_Deadline;
+                    t_StartLastExp = t_SequencedEnd - T_Exposure;
+                    scenarioDescription = `Flip Window: Sub sequence crosses deadline. Flip fails or is clamped to T_Deadline.`;
+                    
+                } else if (t_TriggerEnd !== -Infinity) {
+                    // Opportunistic Flip: Found the triggering sub
+                    t_SequencedEnd = t_TriggerEnd; 
+                    t_StartLastExp = t_TriggerStart;
+                    scenarioDescription = `Flip Window: Sub lands inside zone. Flip executed immediately.`;
+                    
+                } else {
+                    // No sub in the chain lands inside T1..T_Deadline (sequence ends before T1)
+                    t_SequencedEnd = T_LastSubEnd_Anchor; 
+                    t_StartLastExp = t_SequencedEnd - T_Exposure;
+                    scenarioDescription = `Flip Window: Sub sequence ends before T1. System must WAIT for T1.`;
+                }
+                
+                t_DowntimeStart = t_SequencedEnd; // Set the actual end time of the triggering sub
+                t_FlipStart = Math.max(T1_sec, t_DowntimeStart); // Flip starts at max of T1 or sub end
+                T_Wait = t_FlipStart - t_DowntimeStart;
+
+            } else { 
+                // Case C: Fixed Time Flip (T1 = T2). Must wait for T1.
+                
+                if (T_LastSubEnd_Anchor > T1_sec) {
+                    // Sub finished too late (past T1 deadline)
+                    t_DowntimeStart = T1_sec; 
+                    t_StartLastExp = t_DowntimeStart - T_Exposure;
+                    scenarioDescription = `Fixed Flip: Sub finished late. Tracking must stop at T1 deadline.`;
+                } else {
+                    t_DowntimeStart = T_LastSubEnd_Anchor;
+                    t_StartLastExp = t_DowntimeStart - T_Exposure;
+                    scenarioDescription = `Fixed Flip: Sub finished safely before T1.`;
+                }
+                
+                t_FlipStart = T1_sec; 
                 T_Wait = t_FlipStart - t_DowntimeStart;
             }
             
-            // Ensure T_Wait is not negative (shouldn't happen with the Math.max, but for safety)
+            // Final calculation for Wait
             T_Wait = Math.max(0, T_Wait);
             
-            // --- Visualization Segment Generation ---
+            // --- Final Calculations and Summary Output ---
 
             const T_PostFlip = SYSTEM_CONSTANTS.T_Slew;
-            let current_time = t_FlipStart;
-            const segments = [];
-
-            // 0. Initial Tracking (Multiple Sub-exposures for context)
-            const numContextSubs = 3; 
-            let t_sub_start = t_StartLastExp;
-
-            for(let i = 0; i < numContextSubs; i++) {
-                t_sub_start -= T_Exposure;
-                segments.push({ 
-                    name: `Sub N-${numContextSubs - i}`, 
-                    short_name: `Sub N-${numContextSubs - i}`, 
-                    duration: T_Exposure, 
-                    color: 'bg-primary-green/70', 
-                    time_start: t_sub_start,
-                    time_end: t_sub_start + T_Exposure
-                });
-            }
-
-            // Last Sub-exposure (Sub N)
-            segments.push({
-                name: 'LAST SUB-EXPOSURE (Sub N)', 
-                short_name: 'LAST SUB', 
-                duration: T_Exposure, 
-                color: 'bg-primary-green/90', 
-                time_start: t_StartLastExp,
-                time_end: t_DowntimeStart
-            });
-
-
-            // 1. Pre-Flip Wait (T_Wait)
-            if (T_Wait > 0) {
-                segments.push({ 
-                    name: 'IDLE WAIT', 
-                    short_name: 'WAIT', 
-                    duration: T_Wait, 
-                    color: T_Pause_min > 0 ? 'bg-downtime-red' : 'bg-wait-orange', 
-                    time_start: t_DowntimeStart,
-                    time_end: t_FlipStart
-                });
-            }
-            
-            // --- Post-Flip Sequence ---
-
-            // 2. Flip Execution (Slew)
-            const t_slew_end = current_time + SYSTEM_CONSTANTS.T_Slew;
-            segments.push({
-                name: 'SLEW/FLIP', 
-                short_name: 'FLIP', 
-                duration: SYSTEM_CONSTANTS.T_Slew, 
-                color: 'bg-slew-blue', 
-                time_start: current_time,
-                time_end: t_slew_end
-            });
-            current_time = t_slew_end;
-
-            // 3. Resuming Imaging
-            segments.push({
-                name: 'IMAGING RESUMES', 
-                short_name: 'RESUME', 
-                duration: 60, // Arbitrary 60s for visual continuity
-                color: 'bg-primary-green/90', 
-                time_start: current_time,
-                time_end: current_time + 60
-            });
-
-
-            // --- 5. Final Calculations and Summary Output ---
+            const time_meridian_to_resume = t_FlipStart + T_PostFlip; 
             const T_Downtime = T_Wait + T_PostFlip;
-            const time_meridian_to_resume = current_time; 
+            
+            // Update global maxTime for rendering/drag limits
+            const minTime = Math.min(0, t_SubChainStart_Raw) - 60; // Extra buffer for subs to the left
+            const maxTimeCalc = Math.max(0, T_MountLimit_sec, time_meridian_to_resume) + 60; 
+            maxTime = Math.max(Math.abs(minTime), Math.abs(maxTimeCalc)); 
+            
+            
+            // --- SNAP LOGIC (Handles visual transition and anchoring) ---
+            const subElement = document.getElementById('last-sub-exposure');
+            if (subElement) {
+                const axisChart = document.getElementById('time-axis-chart');
+                const containerWidth = axisChart.clientWidth || 800;
+                const timeSpan = maxTime * 2; 
+                const contentWidth = containerWidth * 0.95;
+                const scaleFactor = contentWidth / timeSpan; 
+                
+                const subStartPos = (t_StartLastExp + maxTime) * scaleFactor;
+                
+                const currentSubStartPos = parseFloat(subElement.style.left.replace('px', '')) || 0;
+                const snapThreshold = 1; // 1 pixel difference means a snap is needed
 
-            // Determine the visualization span
-            const minTime = segments.reduce((min, s) => Math.min(min, s.time_start), 0);
-            const maxTime = segments.reduce((max, s) => Math.max(max, s.time_end), 0); 
-            const totalTimeSpan = maxTime - minTime;
+                if (Math.abs(currentSubStartPos - subStartPos) > snapThreshold) {
+                    // Detected a snap (a new sub is now the 'Last Sub')
+                    subElement.style.opacity = '0'; // Start fade out
+                    
+                    setTimeout(() => {
+                        // Immediately update both the position and the manual anchor point
+                        subElement.style.left = `${subStartPos}px`; // Snap visual position
+                        t_SubEnd_Manual = t_DowntimeStart; // Anchor the drag point to the snapped value
+                        subElement.style.opacity = '1'; // Fade back in
+                    }, 50); // Small delay before snapping and fading in
+                } else if (!isDragging) {
+                    // Update manual anchor point to match the visual if not dragging (for stability after release)
+                    t_SubEnd_Manual = t_DowntimeStart; 
+                }
+                
+                subElement.style.width = `${T_Exposure * scaleFactor}px`; // Ensure width update is instant
+            }
 
+
+            // Re-render the UI
+            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec, T_Exposure, t_SubChainStart_Raw);
 
             let summaryHTML = `
                 <p><strong>Scenario Status:</strong> <span class="text-blue-400">${scenarioDescription}</span></p>
@@ -740,22 +782,14 @@
                 <hr class="my-3 border-gray-700">
 
                 <p class="mt-4 text-xl"><strong>TOTAL DOWNTIME:</strong> <span class="text-downtime-red font-bold font-mono">${formatTime(T_Downtime)}</span></p>
-                <p class="mt-1 text-sm text-gray-400">Total time from Meridian (t=0) to Imaging Resumption: <span class="font-mono">${formatTime(time_meridian_to_resume)}</span></p>
+                <p class="mt-1 text-sm text-gray-400">Time Coordinate Imaging Resumes (Absolute time after t=0): <span class="font-mono">${formatTime(time_meridian_to_resume)}</span></p>
             `;
             summaryElement.innerHTML = summaryHTML;
-            totalTimeMinElement.textContent = formatTime(T_Downtime);
-            
-            // --- 6. Render Visualization ---
-            renderTimeline(segments, minTime, totalTimeSpan);
-            // Pass T1_sec and t_StartLastExp for marker generation
-            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec);
         }
 
         // Initialize the calculation and event listeners on page load
         document.addEventListener('DOMContentLoaded', () => {
-            // Setup Pan/Zoom events for the TIME AXIS CHART
-            setupPanZoom();
-
+            setupDrag();
             calculateFlip();
             // Recalculate on resize to maintain responsiveness
             window.addEventListener('resize', calculateFlip); 
