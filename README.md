@@ -23,6 +23,9 @@
             opacity: 0;
             transition: opacity 0.3s;
             z-index: 50;
+            /* Dark theme tooltip background */
+            background-color: #1f2937; 
+            border: 1px solid #4b5563;
         }
         /* Meridian Line (t=0) - Amber */
         .meridian-line {
@@ -237,14 +240,17 @@
             timelineChart.innerHTML = '<div class="meridian-line"></div>'; // Reset and re-add meridian line
             
             const containerWidth = timelineChart.clientWidth || 800;
-            const scaleFactor = (containerWidth * 0.95) / totalTimeSpan; // Use 95% for padding
+            const contentWidth = containerWidth * 0.95; // Use 95% for padding
+            const scaleFactor = contentWidth / totalTimeSpan; 
 
-            // Calculate the offset required to center the Meridian (t=0)
-            const meridianOffsetPixels = Math.abs(minTime) * scaleFactor + (containerWidth * 0.025); // Add a small left margin
+            // Calculate the pixel position of t=0 (Meridian) relative to the start of the visible span (minTime)
+            const meridianOffsetFromStart = Math.abs(minTime) * scaleFactor;
+            const leftPadding = (containerWidth * 0.05) / 2;
+            const meridianOffsetPixels = meridianOffsetFromStart + leftPadding;
 
             // 1. Render the Mount Limit Line
-            const positionFromStartOfSpan = T_MountLimit_sec - minTime;
-            const mountLimitOffset = positionFromStartOfSpan * scaleFactor;
+            const positionFromStartOfSpanLimit = T_MountLimit_sec - minTime;
+            const mountLimitOffset = positionFromStartOfSpanLimit * scaleFactor + leftPadding;
 
             const mountLimitLine = document.createElement('div');
             mountLimitLine.className = 'mount-limit-line';
@@ -262,7 +268,8 @@
                 
                 // Calculate position based on the start time (relative to minTime)
                 const positionFromStartOfSpan = segment.time_start - minTime;
-                const positionOffset = positionFromStartOfSpan * scaleFactor;
+                // THIS WAS THE FIX: Add the leftPadding to correctly align with the Meridian line
+                const positionOffset = positionFromStartOfSpan * scaleFactor + leftPadding;
 
                 // Adjust the main position for the segments
                 segmentElement.style.position = 'absolute';
