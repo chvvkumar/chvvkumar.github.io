@@ -49,32 +49,6 @@
             text-align: center;
             width: 100px;
         }
-        /* Mount Limit Line - Red Dashed */
-        .mount-limit-line {
-            width: 2px;
-            height: 100%;
-            background: repeating-linear-gradient(
-                to bottom,
-                #f87171, /* Red 400 for contrast */
-                #f87171 5px,
-                transparent 5px,
-                transparent 10px
-            );
-            position: absolute;
-            z-index: 10;
-        }
-        .mount-limit-line::after {
-            content: 'MOUNT LIMIT';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translate(-50%, -100%);
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #f87171;
-            text-align: center;
-            width: 100px;
-        }
         /* Timeline Container */
         .timeline-container {
             position: relative;
@@ -98,6 +72,51 @@
         }
         input[type="range"]::-moz-range-thumb {
             background: #60a5fa; /* Blue 400 */
+        }
+
+        /* Time Axis Styles (New Feature) */
+        .time-axis-container {
+            position: relative;
+            width: 100%;
+            height: 80px; /* Increased height for labels */
+            margin-top: 1rem;
+        }
+        .time-axis-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: #f87171; /* Red 400 */
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .time-marker {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background-color: #f87171;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+        }
+        .time-marker-label {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            font-size: 0.75rem;
+            text-align: center;
+            width: 100px;
+        }
+        .meridian-axis-marker {
+            background-color: #f59e0b;
+            height: 30px;
+            width: 3px;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .meridian-axis-marker .time-marker-label {
+            color: #f59e0b;
+            font-weight: bold;
         }
     </style>
     <script>
@@ -164,9 +183,17 @@
             <h2 class="text-xl font-semibold mb-4 text-gray-200">Timeline Visualization (Total Downtime: <span id="total-time-min" class="font-mono text-downtime-red font-bold"></span>)</h2>
             <div id="timeline-chart" class="timeline-container">
                 <div class="meridian-line"></div>
-                <!-- Timeline segments and Mount Limit line will be injected here -->
+                <!-- Timeline segments will be injected here -->
             </div>
-            <p class="text-xs text-gray-400 mt-3 text-center">Timeline is scaled dynamically. Hover over segments for detail. (Scroll horizontally if needed)</p>
+            <p class="text-xs text-gray-400 mt-3 text-center">Duration-based scale. Hover over segments for detail. (Scroll horizontally if needed)</p>
+            
+            <!-- NEW: Time Axis Visualization (Coordinate-based, Non-scaled) -->
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold mb-2 text-gray-300">Key Timing Events (Relative to Meridian, $t=0$)</h3>
+                <div id="time-axis-chart" class="time-axis-container bg-gray-700/50 rounded-lg p-2">
+                    <div class="time-axis-line"></div>
+                </div>
+            </div>
         </div>
 
 
@@ -226,18 +253,81 @@
             const minutes = Math.floor(absSeconds / 60);
             const seconds = absSeconds % 60;
 
+            const secPart = seconds.toFixed(0);
+
             if (minutes > 0) {
-                return `${sign}${minutes}m ${seconds.toFixed(0)}s`;
+                return `${sign}${minutes}m ${secPart.padStart(2, '0')}s`;
             }
-            return `${sign}${seconds.toFixed(0)}s`;
+            return `${sign}${secPart}s`;
         }
         
         /**
+         * Renders the simple non-scaled time axis below the main timeline.
+         */
+        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline) {
+            const axisChart = document.getElementById('time-axis-chart');
+            axisChart.innerHTML = '<div class="time-axis-line"></div>';
+
+            const containerWidth = axisChart.clientWidth || 800;
+            const leftPadding = 0.05 * containerWidth; // 5% padding
+            const rightPadding = 0.05 * containerWidth;
+            const contentWidth = containerWidth - leftPadding - rightPadding;
+
+            // Determine the max absolute time value to set the scale (e.g., if T_Effective_Deadline is 30m)
+            const maxTime = Math.max(
+                Math.abs(t_DowntimeStart), 
+                Math.abs(t_FlipStart), 
+                T_Effective_Deadline
+            ) + 60; // Add 60s buffer
+            
+            const timeSpan = maxTime * 2; // Time span from -maxTime to +maxTime
+            const scaleFactor = contentWidth / timeSpan;
+
+            // Position of the meridian (t=0)
+            const meridianPos = (maxTime * scaleFactor) + leftPadding;
+
+            const timeMarkers = [
+                { time: t_DowntimeStart, label: 'Tracking Stops', color: 'text-red-400', special: 'stop' },
+                { time: t_FlipStart, label: 'Flip Starts (T1)', color: 'text-blue-400', special: 'flip' },
+                { time: T_Effective_Deadline, label: 'Mount Deadline', color: 'text-yellow-400', special: 'limit' },
+            ];
+
+            // 1. Render Meridian Marker
+            const meridianMarker = document.createElement('div');
+            meridianMarker.className = 'time-marker meridian-axis-marker';
+            meridianMarker.style.left = `${meridianPos}px`;
+            meridianMarker.innerHTML = `<span class="time-marker-label">Meridian (${formatTime(0)})</span>`;
+            axisChart.appendChild(meridianMarker);
+            
+            // 2. Render Key Time Markers
+            timeMarkers.forEach(marker => {
+                const markerTime = marker.time;
+                const position = ((markerTime + maxTime) * scaleFactor) + leftPadding;
+                
+                // Only render if within the visual range
+                if (position > leftPadding && position < containerWidth - rightPadding) {
+                    const markerElement = document.createElement('div');
+                    markerElement.className = `time-marker ${marker.color}`;
+                    markerElement.style.left = `${position}px`;
+                    
+                    const markerLabel = document.createElement('span');
+                    markerLabel.className = `time-marker-label ${marker.color} -mt-5`;
+                    markerLabel.innerHTML = `${marker.label}<br/>(${formatTime(markerTime)})`;
+                    
+                    markerElement.appendChild(markerLabel);
+                    axisChart.appendChild(markerElement);
+                }
+            });
+        }
+
+
+        /**
          * Converts an array of timeline segments into HTML for visualization.
          */
-        function renderTimeline(segments, minTime, totalTimeSpan, T_MountLimit_sec) {
+        function renderTimeline(segments, minTime, totalTimeSpan) {
             const timelineChart = document.getElementById('timeline-chart');
-            timelineChart.innerHTML = '<div class="meridian-line"></div>'; // Reset and re-add meridian line
+            // Remove Mount Limit Line logic from here
+            timelineChart.innerHTML = '<div class="meridian-line"></div>'; 
             
             const containerWidth = timelineChart.clientWidth || 800;
             const contentWidth = containerWidth * 0.95; // Use 95% for padding
@@ -248,17 +338,7 @@
             const leftPadding = (containerWidth * 0.05) / 2;
             const meridianOffsetPixels = meridianOffsetFromStart + leftPadding;
 
-            // 1. Render the Mount Limit Line
-            const positionFromStartOfSpanLimit = T_MountLimit_sec - minTime;
-            const mountLimitOffset = positionFromStartOfSpanLimit * scaleFactor + leftPadding;
-
-            const mountLimitLine = document.createElement('div');
-            mountLimitLine.className = 'mount-limit-line';
-            mountLimitLine.style.left = `${mountLimitOffset}px`;
-            timelineChart.appendChild(mountLimitLine);
-
-
-            // 2. Render the segments
+            // 1. Render the segments
             segments.forEach((segment) => {
                 const duration = segment.duration;
                 const width = Math.max(3, duration * scaleFactor); // Min width of 3px
@@ -268,7 +348,7 @@
                 
                 // Calculate position based on the start time (relative to minTime)
                 const positionFromStartOfSpan = segment.time_start - minTime;
-                // THIS WAS THE FIX: Add the leftPadding to correctly align with the Meridian line
+                // Add the leftPadding to correctly align with the Meridian line
                 const positionOffset = positionFromStartOfSpan * scaleFactor + leftPadding;
 
                 // Adjust the main position for the segments
@@ -350,20 +430,20 @@
             }
             
             // --- 3. Determine Flip Start Time (t_FlipStart) and Wait Time (T_Wait) ---
+            t_DowntimeStart = t_StopTracking;
+
             if (scenarioDescription.includes("Deadline Reached")) {
                 // Handled in Scenario 2 above. T_FlipStart is T_Effective_Deadline.
-            } else if (t_StopTracking < T1_sec) {
+            } else if (t_DowntimeStart < T1_sec) {
                 // Flip must wait until the earliest time (T1)
                 t_FlipStart = T1_sec;
-                T_Wait = t_FlipStart - t_StopTracking;
+                T_Wait = t_FlipStart - t_DowntimeStart;
             } else {
-                // Flip starts immediately after tracking stops (since t_StopTracking is in the T1/T_Effective_Deadline window)
-                t_FlipStart = t_StopTracking;
+                // Flip starts immediately after tracking stops (since t_DowntimeStart is in the T1/T_Effective_Deadline window)
+                t_FlipStart = t_DowntimeStart;
                 T_Wait = 0;
             }
 
-            // Downtime begins when tracking actually stopped
-            t_DowntimeStart = t_StopTracking;
             
             // --- 4. Calculate Post-Flip Recovery Time (T_PostFlip) ---
             // Simplified Post-Flip: Only Slew Time (45s)
@@ -453,8 +533,9 @@
             document.getElementById('summary').innerHTML = summaryHTML;
             document.getElementById('total-time-min').textContent = formatTime(T_Downtime);
             
-            // --- 6. Render Timeline Visualization ---
-            renderTimeline(segments, minTime, totalTimeSpan, T_MountLimit_sec);
+            // --- 6. Render Visualization ---
+            renderTimeline(segments, minTime, totalTimeSpan);
+            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline);
         }
 
         // Initialize the calculation on page load
