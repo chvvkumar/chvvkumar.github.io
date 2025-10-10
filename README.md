@@ -55,12 +55,13 @@
             height: 300px; 
             display: flex;
             align-items: center;
-            overflow-x: auto; 
+            overflow-x: auto; /* Allow horizontal scrolling only */
             border: 2px solid #374151; /* Gray 700 border */
             border-radius: 8px;
             padding: 1rem 0;
             background-color: #1f2937; /* Gray 800 background */
         }
+        
         /* Input Field Styling for Dark Theme */
         input[type="number"], input[type="range"] {
             background-color: #374151; /* Gray 700 */
@@ -78,8 +79,20 @@
         .time-axis-container {
             position: relative;
             width: 100%;
-            height: 80px; /* Increased height for labels */
+            height: 100px; /* Increased height to accommodate bottom labels */
             margin-top: 1rem;
+            overflow-x: hidden; /* Hide default scrollbar, JS will manage pan/zoom */
+            cursor: grab;
+        }
+        .time-axis-container:active {
+            cursor: grabbing;
+        }
+
+        .time-axis-line-wrapper {
+            position: absolute;
+            height: 100%;
+            left: 0;
+            top: 0;
         }
         .time-axis-line {
             position: absolute;
@@ -98,15 +111,24 @@
             transform: translate(-50%, -50%);
             z-index: 20;
         }
+        /* Marker Label Placements */
         .time-marker-label {
             position: absolute;
-            bottom: 100%;
             left: 50%;
-            transform: translateX(-50%) translateY(5px);
+            transform: translateX(-50%);
             font-size: 0.75rem;
             text-align: center;
             width: 100px;
         }
+        .label-top {
+            bottom: 100%;
+            transform: translateX(-50%) translateY(5px);
+        }
+        .label-bottom {
+            top: 100%;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
         .meridian-axis-marker {
             background-color: #f59e0b;
             height: 30px;
@@ -117,130 +139,115 @@
         .meridian-axis-marker .time-marker-label {
             color: #f59e0b;
             font-weight: bold;
+            bottom: 100%; /* Keep meridian label on top */
+            transform: translateX(-50%) translateY(5px);
         }
     </style>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['Consolas', 'Menlo', 'monospace'],
-                    },
-                    colors: {
-                        'primary-green': '#10b981', /* Emerald 500 */
-                        'downtime-red': '#f87171', /* Red 400 */
-                        'wait-orange': '#fb923c', /* Orange 400 */
-                        'slew-blue': '#60a5fa', /* Blue 400 */
-                        'card-bg': '#1f2937', /* Gray 800 */
-                        'subcard-bg': '#111827', /* Gray 900 */
-                    }
-                }
-            }
-        }
-    </script>
 </head>
-<body class="bg-gray-900 p-4 md:p-8 font-sans text-gray-100">
+<body class="bg-gray-900 text-gray-100 p-6 min-h-screen font-sans">
 
-    <div class="max-w-4xl mx-auto bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
-        <h1 class="text-3xl font-bold mb-4 text-gray-50 border-b border-gray-700 pb-2">N.I.N.A. Meridian Flip Simulator</h1>
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-extrabold mb-8 text-blue-400">N.I.N.A. Meridian Flip Simulator</h1>
 
-        <!-- Configuration Inputs - All in one row -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-            
-            <!-- T1 Input (N.I.N.A.) -->
-            <div class="bg-gray-700 p-4 rounded-lg shadow-xl">
-                <label for="t1" class="block text-sm font-medium text-gray-300">Minutes after meridian (T1)</label>
-                <input type="number" id="t1" value="0" min="0" class="mt-1 block w-full border border-gray-600 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-400 mt-1">Flip earliest start time (min)</p>
+        <!-- Input Parameters -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <!-- T1 Input -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
+                <label for="t1" class="block text-sm font-medium text-gray-400 mb-1">Minutes after meridian (T1)</label>
+                <input type="number" id="t1" value="0" min="0" oninput="calculateFlip()"
+                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
+                <p class="text-xs text-gray-500 mt-1">Flip earliest start time (min)</p>
             </div>
 
-            <!-- T2 Input (N.I.N.A.) -->
-            <div class="bg-gray-700 p-4 rounded-lg shadow-xl">
-                <label for="t2" class="block text-sm font-medium text-gray-300">Max. minutes after meridian (T2)</label>
-                <input type="number" id="t2" value="15" min="0" class="mt-1 block w-full border border-gray-600 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-400 mt-1">Flip software deadline (min)</p>
+            <!-- T2 Input -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
+                <label for="t2" class="block text-sm font-medium text-gray-400 mb-1">Max. minutes after meridian (T2)</label>
+                <input type="number" id="t2" value="15" min="0" oninput="calculateFlip()"
+                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
+                <p class="text-xs text-gray-500 mt-1">Flip software deadline (min)</p>
             </div>
 
-            <!-- T_Pause Input (N.I.N.A.) -->
-            <div class="bg-gray-700 p-4 rounded-lg shadow-xl">
-                <label for="t_pause" class="block text-sm font-medium text-gray-300">Pause before meridian</label>
-                <input type="number" id="t_pause" value="0" min="0" class="mt-1 block w-full border border-gray-600 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-400 mt-1">Stops tracking before Meridian (min)</p>
-            </div>
-            
-            <!-- Mount Limit Input (Physical Constraint) -->
-            <div class="bg-yellow-900/50 p-4 rounded-lg shadow-xl border border-yellow-700">
-                <label for="t_mount_limit" class="block text-sm font-medium text-yellow-300">Max. Mount Tracking Past Meridian</label>
-                <input type="number" id="t_mount_limit" value="20" min="0" class="mt-1 block w-full border border-yellow-800 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-yellow-400 mt-1">Absolute physical/driver limit (min)</p>
+            <!-- Pause Before Meridian Input -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
+                <label for="t_pause" class="block text-sm font-medium text-gray-400 mb-1">Pause before meridian</label>
+                <input type="number" id="t_pause" value="0" min="0" oninput="calculateFlip()"
+                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
+                <p class="text-xs text-gray-500 mt-1">Stops tracking before Meridian (min)</p>
             </div>
 
-        </div>
-
-        <!-- Timeline Visualization (Moved to the top) -->
-        <div class="mb-8">
-            <h2 class="text-xl font-semibold mb-4 text-gray-200">Timeline Visualization (Total Downtime: <span id="total-time-min" class="font-mono text-downtime-red font-bold"></span>)</h2>
-            <div id="timeline-chart" class="timeline-container">
-                <div class="meridian-line"></div>
-                <!-- Timeline segments will be injected here -->
-            </div>
-            <p class="text-xs text-gray-400 mt-3 text-center">Duration-based scale. Hover over segments for detail. (Scroll horizontally if needed)</p>
-            
-            <!-- NEW: Time Axis Visualization (Coordinate-based, Non-scaled) -->
-            <div class="mt-6">
-                <h3 class="text-lg font-semibold mb-2 text-gray-300">Key Timing Events (Relative to Meridian, $t=0$)</h3>
-                <div id="time-axis-chart" class="time-axis-container bg-gray-700/50 rounded-lg p-2">
-                    <div class="time-axis-line"></div>
-                </div>
+            <!-- Mount Tracking Limit Input -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
+                <label for="t_mount_limit" class="block text-sm font-medium text-gray-400 mb-1">Max. Mount Tracking Past Meridian</label>
+                <input type="number" id="t_mount_limit" value="20" min="0" oninput="calculateFlip()"
+                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
+                <p class="text-xs text-gray-500 mt-1">Absolute physical/driver limit (min)</p>
             </div>
         </div>
 
+        <!-- Timeline Visualization -->
+        <h2 class="text-xl font-bold mb-3 text-gray-200">Timeline Visualization (<span class="text-downtime-red">Total Downtime: <span id="total-time-min">0s</span></span>)</h2>
+        <div id="timeline-chart" class="timeline-container w-full">
+            <!-- Segments and Meridian Line are rendered here by JavaScript -->
+        </div>
+        <p class="text-xs text-gray-500 text-center mt-2">Timeline is scaled dynamically. Hover over segments for detail. (Scroll horizontally if needed)</p>
 
-        <!-- Dynamic Settings & Scenario Selector -->
-        <div class="bg-blue-900/40 p-6 rounded-xl mb-8 border border-blue-800">
-            <h2 class="text-xl font-semibold mb-4 text-blue-300">Scenario Selector: Last Exposure End Time</h2>
+        <!-- Key Timing Events (Zoomable Axis) -->
+        <h2 class="text-xl font-bold mb-3 mt-8 text-gray-200">Key Timing Events (Zoomable Reference Axis)</h2>
+        <div id="time-axis-chart" class="time-axis-container">
+            <div id="time-axis-wrapper" class="time-axis-line-wrapper">
+                <!-- Time axis line and markers are rendered here by JavaScript -->
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 text-center mt-2">Use scroll wheel to **zoom** and click-and-drag to **pan** this axis.</p>
+
+
+        <!-- Scenario Selector -->
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl border border-gray-700 mt-8">
+            <h2 class="text-xl font-bold mb-4 text-blue-300">Scenario Selector: Last Exposure End Time</h2>
             
-            <!-- Exposure End Time Slider -->
-            <div class="mb-6">
-                <label for="t_end_exp" class="block text-lg font-medium text-gray-200 mb-2">
-                    Simulated End Time of Last Exposure: 
-                    <span id="t_end_exp_display" class="font-mono text-blue-400 ml-2"></span>
-                </label>
-                <input type="range" id="t_end_exp" value="0" min="-180" max="300" step="10" 
-                       class="w-full h-2 bg-blue-800 rounded-lg appearance-none cursor-pointer" oninput="calculateFlip()">
-                <div class="flex justify-between text-xs text-gray-400 mt-1">
-                    <span>-3m (Well Before Meridian)</span>
-                    <span class="text-gray-200 font-semibold">Meridian (0s)</span>
-                    <span>+5m (Well After Meridian)</span>
-                </div>
+            <div class="flex justify-between items-center mb-4">
+                <label for="t_end_exp" class="block text-sm font-medium text-gray-300">Simulated End Time of Last Exposure:</label>
+                <span id="t_end_exp_display" class="font-mono text-lg text-yellow-400">0s</span>
             </div>
-
-            <!-- System Constants -->
-            <div class="bg-blue-900 p-3 rounded-lg text-xs text-blue-400">
-                <h3 class="font-bold mb-1">Post-Flip Time Assumptions:</h3>
-                <ul class="list-disc list-inside space-y-0.5">
-                    <li>Slew Time: 45s (Fixed downtime for mount flip)</li>
-                </ul>
+            
+            <input type="range" id="t_end_exp" min="-300" max="300" step="1" value="0" oninput="calculateFlip()"
+                   class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg">
+            
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                <span>-5m (Well Before Meridian)</span>
+                <span class="text-amber-400 font-semibold">Meridian (0s)</span>
+                <span>+5m (Well After Meridian)</span>
+            </div>
+            
+            <h3 class="text-base font-semibold mt-4 text-gray-400">Post-Flip Time Assumptions:</h3>
+            <ul class="text-sm list-disc list-inside ml-4 text-gray-500">
+                <li>Slew Time: 45s (Fixed downtime for mount flip)</li>
+            </ul>
+        </div>
+        
+        <!-- Flip Outcome Summary -->
+        <div class="bg-green-900/30 p-6 rounded-lg shadow-xl border border-green-700 mt-8">
+            <h2 class="text-xl font-bold mb-4 text-green-400">Flip Outcome Summary</h2>
+            <div id="summary" class="text-gray-200 space-y-1">
+                <!-- Summary details rendered here by JavaScript -->
             </div>
         </div>
-
-
-        <!-- Results and Summary -->
-        <div class="mb-8 p-6 bg-green-900/40 border-2 border-green-700 rounded-xl">
-            <h2 class="text-2xl font-bold mb-4 text-green-300">Flip Outcome Summary</h2>
-            <div id="summary" class="text-base text-gray-200 space-y-2">
-                <!-- Summary will be injected here -->
-            </div>
-        </div>
-
     </div>
 
     <script>
+        // State variables for Pan and Zoom on the Time Axis
+        let axisCurrentScale = 1.0;
+        let isDragging = false;
+        let startX;
+        let startScrollLeft;
+
         // System Constants (Used for Post-Flip calculation)
         const SYSTEM_CONSTANTS = {
             T_Slew: 45,       // Mount Slew/Flip Time (seconds)
         };
+        
+        // Fixed pixel width for the main visualization bar chart
+        const FIXED_TIMELINE_WIDTH_PX = 2000; 
 
         /**
          * Converts a time in seconds to a formatted string (e.g., 5m 30s).
@@ -262,29 +269,40 @@
         }
         
         /**
-         * Renders the simple non-scaled time axis below the main timeline.
+         * Renders the zoomable/pannable time axis below the main timeline.
          */
         function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline) {
             const axisChart = document.getElementById('time-axis-chart');
-            axisChart.innerHTML = '<div class="time-axis-line"></div>';
+            const axisWrapper = document.getElementById('time-axis-wrapper');
+            axisWrapper.innerHTML = '<div class="time-axis-line"></div>';
 
             const containerWidth = axisChart.clientWidth || 800;
-            const leftPadding = 0.05 * containerWidth; // 5% padding
-            const rightPadding = 0.05 * containerWidth;
-            const contentWidth = containerWidth - leftPadding - rightPadding;
+            const contentWidthBase = containerWidth * 0.95; 
 
-            // Determine the max absolute time value to set the scale (e.g., if T_Effective_Deadline is 30m)
+            // --- Determine Scale and Span for Zoom ---
+            // Max time determines the visual range when scale is 1.0
             const maxTime = Math.max(
                 Math.abs(t_DowntimeStart), 
                 Math.abs(t_FlipStart), 
-                T_Effective_Deadline
-            ) + 60; // Add 60s buffer
+                T_Effective_Deadline,
+                300 // Minimum span of 5 minutes (300s) on either side
+            ); 
             
             const timeSpan = maxTime * 2; // Time span from -maxTime to +maxTime
-            const scaleFactor = contentWidth / timeSpan;
+            const baseScaleFactor = contentWidthBase / timeSpan;
+            
+            // Apply current zoom scale
+            const currentScaleFactor = baseScaleFactor * axisCurrentScale;
+            const scaledContentWidth = timeSpan * currentScaleFactor;
+            
+            // Set the wrapper width
+            axisWrapper.style.width = `${scaledContentWidth}px`;
+            
+            // --- Calculate Positions ---
+            const contentStart = (maxTime * currentScaleFactor);
 
             // Position of the meridian (t=0)
-            const meridianPos = (maxTime * scaleFactor) + leftPadding;
+            const meridianPos = contentStart; 
 
             const timeMarkers = [
                 { time: t_DowntimeStart, label: 'Tracking Stops', color: 'text-red-400', special: 'stop' },
@@ -292,75 +310,97 @@
                 { time: T_Effective_Deadline, label: 'Mount Deadline', color: 'text-yellow-400', special: 'limit' },
             ];
 
+            // Use an index to alternate placement (0 = top, 1 = bottom)
+            let placementIndex = 0; 
+            
             // 1. Render Meridian Marker
             const meridianMarker = document.createElement('div');
             meridianMarker.className = 'time-marker meridian-axis-marker';
             meridianMarker.style.left = `${meridianPos}px`;
-            meridianMarker.innerHTML = `<span class="time-marker-label">Meridian (${formatTime(0)})</span>`;
-            axisChart.appendChild(meridianMarker);
+            meridianMarker.innerHTML = `<span class="time-marker-label label-top">Meridian (${formatTime(0)})</span>`;
+            axisWrapper.appendChild(meridianMarker);
             
             // 2. Render Key Time Markers
             timeMarkers.forEach(marker => {
                 const markerTime = marker.time;
-                const position = ((markerTime + maxTime) * scaleFactor) + leftPadding;
+                // Position relative to the *start* of the scaled content (which is -maxTime)
+                const position = (markerTime + maxTime) * currentScaleFactor; 
                 
-                // Only render if within the visual range
-                if (position > leftPadding && position < containerWidth - rightPadding) {
-                    const markerElement = document.createElement('div');
-                    markerElement.className = `time-marker ${marker.color}`;
-                    markerElement.style.left = `${position}px`;
-                    
-                    const markerLabel = document.createElement('span');
-                    markerLabel.className = `time-marker-label ${marker.color} -mt-5`;
-                    markerLabel.innerHTML = `${marker.label}<br/>(${formatTime(markerTime)})`;
-                    
-                    markerElement.appendChild(markerLabel);
-                    axisChart.appendChild(markerElement);
+                // Skip rendering the marker if it's the Meridian time, to prevent overlap (handled by special marker)
+                if (markerTime === 0 && marker.label === 'Flip Starts (T1)') {
+                    // Check if Flip Starts and Meridian are the same time
+                    return; 
                 }
+
+                const markerElement = document.createElement('div');
+                // Use marker.color class for the label color
+                markerElement.className = `time-marker ${marker.color.replace('text-', 'bg-')}`;
+                markerElement.style.left = `${position}px`;
+                
+                const markerLabel = document.createElement('span');
+                
+                // Alternate placement class
+                const placementClass = placementIndex % 2 === 0 ? 'label-top' : 'label-bottom';
+                
+                markerLabel.className = `time-marker-label ${marker.color} ${placementClass}`;
+                markerLabel.innerHTML = `${marker.label}<br/>(${formatTime(markerTime)})`;
+                
+                markerElement.appendChild(markerLabel);
+                axisWrapper.appendChild(markerElement);
+
+                // Increment index only if we rendered the marker (to handle T1=0 case)
+                placementIndex++;
             });
+
+            // Center the view on the Meridian initially or after zoom
+            const scrollCenterPosition = meridianPos - (containerWidth / 2);
+            axisChart.scrollLeft = scrollCenterPosition;
         }
 
 
         /**
-         * Converts an array of timeline segments into HTML for visualization.
+         * Renders the main non-zoomable, scrollable bar chart visualization.
          */
         function renderTimeline(segments, minTime, totalTimeSpan) {
             const timelineChart = document.getElementById('timeline-chart');
-            // Remove Mount Limit Line logic from here
             timelineChart.innerHTML = '<div class="meridian-line"></div>'; 
             
             const containerWidth = timelineChart.clientWidth || 800;
-            const contentWidth = containerWidth * 0.95; // Use 95% for padding
-            const scaleFactor = contentWidth / totalTimeSpan; 
+            
+            // The scale factor is fixed based on the total time span (in seconds) 
+            // and the fixed pixel width defined globally.
+            const scaleFactor = FIXED_TIMELINE_WIDTH_PX / totalTimeSpan;
+            const scaledContentWidth = FIXED_TIMELINE_WIDTH_PX;
+            
+            const innerWrapper = document.createElement('div');
+            innerWrapper.style.position = 'absolute';
+            innerWrapper.style.height = '100%';
+            innerWrapper.style.width = `${scaledContentWidth + 100}px`; // Add buffer
+            innerWrapper.style.left = '0';
+            innerWrapper.style.top = '0';
 
-            // Calculate the pixel position of t=0 (Meridian) relative to the start of the visible span (minTime)
+            const leftPadding = 50; // Fixed padding for visual comfort
             const meridianOffsetFromStart = Math.abs(minTime) * scaleFactor;
-            const leftPadding = (containerWidth * 0.05) / 2;
             const meridianOffsetPixels = meridianOffsetFromStart + leftPadding;
-
-            // 1. Render the segments
+            
+            // 1. Render the segments onto the inner wrapper
             segments.forEach((segment) => {
                 const duration = segment.duration;
-                const width = Math.max(3, duration * scaleFactor); // Min width of 3px
+                const width = Math.max(3, duration * scaleFactor); 
                 
                 const segmentElement = document.createElement('div');
-                segmentElement.className = `timeline-segment ${segment.color} h-12 relative flex items-center justify-center text-white text-xs whitespace-nowrap px-1 font-semibold`;
+                segmentElement.className = `timeline-segment ${segment.color} h-12 absolute flex items-center justify-center text-white text-xs whitespace-nowrap px-1 font-semibold`;
                 
-                // Calculate position based on the start time (relative to minTime)
                 const positionFromStartOfSpan = segment.time_start - minTime;
-                // Add the leftPadding to correctly align with the Meridian line
                 const positionOffset = positionFromStartOfSpan * scaleFactor + leftPadding;
 
-                // Adjust the main position for the segments
-                segmentElement.style.position = 'absolute';
                 segmentElement.style.left = `${positionOffset}px`;
                 segmentElement.style.width = `${width}px`;
-                segmentElement.style.zIndex = '20'; // Above the meridian line
+                segmentElement.style.zIndex = '20'; 
 
                 const timeStartLabel = segment.time_start < 0 ? `${formatTime(segment.time_start)} (Before Meridian)` : `${formatTime(segment.time_start)} (After Meridian)`;
                 const timeEndLabel = segment.time_end < 0 ? `${formatTime(segment.time_end)} (Before Meridian)` : `${formatTime(segment.time_end)} (After Meridian)`;
 
-                // Tooltip positioned above the segment
                 segmentElement.innerHTML = `
                     <span class="text-shadow-sm pointer-events-none">${segment.short_name}</span>
                     <div class="tooltip absolute bottom-full mb-3 p-3 bg-gray-800 text-white rounded-md shadow-2xl text-center text-sm">
@@ -371,32 +411,119 @@
                     </div>
                 `;
                 
-                timelineChart.appendChild(segmentElement);
+                innerWrapper.appendChild(segmentElement);
             });
             
-            // Re-center the meridian line
+            timelineChart.appendChild(innerWrapper);
+
+            // Re-center the meridian line on the inner wrapper's coordinates
             const meridianLine = document.querySelector('.meridian-line');
             meridianLine.style.left = `${meridianOffsetPixels}px`;
-            
-            // Scroll to center the meridian line on load/re-calc
-            timelineChart.scrollLeft = meridianOffsetPixels - (timelineChart.clientWidth / 2);
 
+            // Calculate the necessary scroll position to center the meridian line
+            const scrollCenterPosition = meridianOffsetPixels - (containerWidth / 2);
+            timelineChart.scrollLeft = scrollCenterPosition;
         }
 
+        // --- Pan and Zoom Event Handlers for Time Axis ---
+        function setupPanZoom() {
+            const chart = document.getElementById('time-axis-chart');
+            if (!chart) return; // Add check for safety
 
+            // Mouse Down (Start Drag)
+            chart.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                chart.style.cursor = 'grabbing';
+                startX = e.pageX - chart.offsetLeft;
+                startScrollLeft = chart.scrollLeft;
+                e.preventDefault();
+            });
+
+            // Mouse Leave/Up (Stop Drag)
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                chart.style.cursor = 'grab';
+            });
+
+            // Mouse Move (Dragging)
+            chart.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const x = e.pageX - chart.offsetLeft;
+                const walk = (x - startX) * 1.5; // Pan speed multiplier
+                chart.scrollLeft = startScrollLeft - walk;
+            });
+
+            // Scroll (Zoom)
+            chart.addEventListener('wheel', (e) => {
+                e.preventDefault();
+
+                const oldScale = axisCurrentScale;
+                const zoomFactor = -e.deltaY * 0.001;
+                
+                // Calculate new scale, clamping between 0.2 and 10.0
+                axisCurrentScale = Math.max(0.2, Math.min(10.0, axisCurrentScale + zoomFactor));
+                
+                // Get mouse position relative to chart
+                const rect = chart.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+
+                // Calculate the pixel position on the currently scaled timeline that is under the cursor
+                const pointToZoomOn = chart.scrollLeft + mouseX;
+
+                // Recalculate and re-render the timeline
+                calculateFlip(false); // Re-render without resetting currentScale
+
+                // Calculate the new scroll position to keep the pointToZoomOn fixed
+                const timeAxisWrapper = document.getElementById('time-axis-wrapper');
+                const newWidth = timeAxisWrapper ? timeAxisWrapper.scrollWidth : 0;
+                
+                if (newWidth === 0) return;
+
+                const ratio = newWidth / (newWidth / oldScale * axisCurrentScale);
+                const newScrollLeft = pointToZoomOn * ratio - mouseX;
+
+                // Apply the new scroll position
+                chart.scrollLeft = newScrollLeft;
+            });
+        }
+        
         /**
          * Calculates the total downtime and generates the timeline data points.
          */
-        function calculateFlip() {
+        function calculateFlip(resetScale = true) {
+            // Reset axis scale only on input changes, not during zoom
+            if (resetScale) {
+                axisCurrentScale = 1.0;
+            }
+
             // 1. Get User Inputs (converted to seconds where necessary)
-            const T1_min = parseFloat(document.getElementById('t1').value) || 0;
-            const T2_min = parseFloat(document.getElementById('t2').value) || 0;
-            const T_Pause_min = parseFloat(document.getElementById('t_pause').value) || 0;
-            const T_End_Exp = parseFloat(document.getElementById('t_end_exp').value) || 0; // Scenario slider value
-            const T_MountLimit_min = parseFloat(document.getElementById('t_mount_limit').value) || 0; 
+            // Use local variables for elements to ensure single access point
+            const t1Element = document.getElementById('t1');
+            const t2Element = document.getElementById('t2');
+            const tPauseElement = document.getElementById('t_pause');
+            const tEndExpElement = document.getElementById('t_end_exp');
+            const tMountLimitElement = document.getElementById('t_mount_limit');
+            const tEndExpDisplayElement = document.getElementById('t_end_exp_display');
+            const summaryElement = document.getElementById('summary');
+            const totalTimeMinElement = document.getElementById('total-time-min');
+            
+            // Safety checks for critical elements
+            if (!t1Element || !tEndExpElement || !tEndExpDisplayElement || !summaryElement || !totalTimeMinElement) {
+                // If any critical element is missing, stop calculation
+                console.error("Critical element missing, stopping calculation.");
+                return;
+            }
+
+
+            const T1_min = parseFloat(t1Element.value) || 0;
+            const T2_min = parseFloat(t2Element.value) || 0;
+            const T_Pause_min = parseFloat(tPauseElement.value) || 0;
+            const T_End_Exp = parseFloat(tEndExpElement.value) || 0; // Scenario slider value
+            const T_MountLimit_min = parseFloat(tMountLimitElement.value) || 0; 
 
             // Update slider display
-            document.getElementById('t_end_exp_display').textContent = formatTime(T_End_Exp);
+            tEndExpDisplayElement.textContent = formatTime(T_End_Exp);
 
             const T1_sec = T1_min * 60;
             const T2_sec_software = T2_min * 60; // T2 as set in NINA
@@ -410,30 +537,28 @@
             let t_DowntimeStart = 0;
             let t_FlipStart = 0;
             let scenarioDescription = "";
-            let t_StopTracking = 0;
             
             // --- 2. Determine Tracking Stop Time (t_StopTracking) ---
             if (T_Pause_min > 0) {
                 // Scenario 1: Forced Pause is set. Tracking stops at -T_Pause_sec.
-                t_StopTracking = -T_Pause_sec;
+                t_DowntimeStart = -T_Pause_sec;
                 scenarioDescription = "Forced Pause: Tracking stopped early to avoid an obstruction.";
             } else if (T_End_Exp > T_Effective_Deadline) {
                 // Scenario 2: Exposure ends AFTER the deadline. NINA would abort/skip the last sub and flip at the deadline.
-                t_StopTracking = T_Effective_Deadline - 1; 
+                t_DowntimeStart = T_Effective_Deadline - 1; 
                 t_FlipStart = T_Effective_Deadline;
                 T_Wait = 1; // Minimal wait time to force the flip at the deadline
                 scenarioDescription = "Deadline Reached: Last exposure aborted/skipped. Flip forced at deadline.";
             } else {
                 // Scenario 3: Normal case. Tracking stops when the last successful exposure finishes.
-                t_StopTracking = T_End_Exp;
+                t_DowntimeStart = T_End_Exp;
                 scenarioDescription = `Tracking Stopped: Last exposure ended at ${formatTime(T_End_Exp)}.`;
             }
             
             // --- 3. Determine Flip Start Time (t_FlipStart) and Wait Time (T_Wait) ---
-            t_DowntimeStart = t_StopTracking;
 
             if (scenarioDescription.includes("Deadline Reached")) {
-                // Handled in Scenario 2 above. T_FlipStart is T_Effective_Deadline.
+                // t_FlipStart is already T_Effective_Deadline from Scenario 2
             } else if (t_DowntimeStart < T1_sec) {
                 // Flip must wait until the earliest time (T1)
                 t_FlipStart = T1_sec;
@@ -446,7 +571,6 @@
 
             
             // --- 4. Calculate Post-Flip Recovery Time (T_PostFlip) ---
-            // Simplified Post-Flip: Only Slew Time (45s)
             const T_PostFlip = SYSTEM_CONSTANTS.T_Slew;
             let current_time = t_FlipStart;
             const segments = [];
@@ -530,23 +654,33 @@
                 <p class="mt-4 text-xl"><strong>TOTAL DOWNTIME:</strong> <span class="text-downtime-red font-bold font-mono">${formatTime(T_Downtime)}</span></p>
                 <p class="mt-1 text-sm text-gray-400">Total time from Meridian (t=0) to Imaging Resumption: <span class="font-mono">${formatTime(time_meridian_to_resume)}</span></p>
             `;
-            document.getElementById('summary').innerHTML = summaryHTML;
-            document.getElementById('total-time-min').textContent = formatTime(T_Downtime);
+            summaryElement.innerHTML = summaryHTML;
+            totalTimeMinElement.textContent = formatTime(T_Downtime);
             
             // --- 6. Render Visualization ---
             renderTimeline(segments, minTime, totalTimeSpan);
             renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline);
         }
 
-        // Initialize the calculation on page load
-        window.onload = () => {
-            // Set the slider's initial value to 0s to center it on meridian
-            document.getElementById('t_end_exp').value = 0; 
+        // Initialize the calculation and event listeners on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const tEndExpSlider = document.getElementById('t_end_exp');
+            
+            // Check if the slider element exists before trying to set its value
+            if (tEndExpSlider) {
+                // Set the slider's initial value to 0s to center it on meridian
+                tEndExpSlider.value = 0; 
+            } else {
+                console.error("Initialization error: 't_end_exp' slider element not found.");
+            }
+
+            // Setup Pan/Zoom events for the TIME AXIS CHART
+            setupPanZoom();
 
             calculateFlip();
             // Recalculate on resize to maintain responsiveness
             window.addEventListener('resize', calculateFlip); 
-        };
+        });
     </script>
 </body>
 </html>
