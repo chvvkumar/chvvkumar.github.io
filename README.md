@@ -10,7 +10,7 @@
         .timeline-segment {
             transition: all 0.3s ease-out;
             border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); /* Darker shadow for contrast */
             min-width: 3px; /* Ensure visibility */
             cursor: pointer;
         }
@@ -52,8 +52,8 @@
             height: 100%;
             background: repeating-linear-gradient(
                 to bottom,
-                #dc2626,
-                #dc2626 5px,
+                #f87171, /* Red 400 for contrast */
+                #f87171 5px,
                 transparent 5px,
                 transparent 10px
             );
@@ -68,22 +68,33 @@
             transform: translate(-50%, -100%);
             font-size: 0.75rem;
             font-weight: 600;
-            color: #dc2626;
+            color: #f87171;
             text-align: center;
             width: 100px;
         }
-        /* Timeline Container - HEIGHT INCREASED */
+        /* Timeline Container */
         .timeline-container {
             position: relative;
-            height: 300px; /* Tripled height for tooltip visibility */
+            height: 300px; 
             display: flex;
             align-items: center;
-            /* Horizontal scrolling is needed if the total time span exceeds screen width */
             overflow-x: auto; 
-            border: 2px solid #e5e7eb;
+            border: 2px solid #374151; /* Gray 700 border */
             border-radius: 8px;
             padding: 1rem 0;
-            background-color: #f9fafb;
+            background-color: #1f2937; /* Gray 800 background */
+        }
+        /* Input Field Styling for Dark Theme */
+        input[type="number"], input[type="range"] {
+            background-color: #374151; /* Gray 700 */
+            border-color: #4b5563; /* Gray 600 */
+            color: #f3f4f6; /* Light text */
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            background: #60a5fa; /* Blue 400 */
+        }
+        input[type="range"]::-moz-range-thumb {
+            background: #60a5fa; /* Blue 400 */
         }
     </style>
     <script>
@@ -96,86 +107,87 @@
                     },
                     colors: {
                         'primary-green': '#10b981', /* Emerald 500 */
-                        'downtime-red': '#ef4444', /* Red 500 */
-                        'wait-orange': '#f97316', /* Orange 600 */
-                        'slew-blue': '#3b82f6', /* Blue 500 */
-                        'overhead-purple': '#8b5cf6', /* Violet 500 */
+                        'downtime-red': '#f87171', /* Red 400 */
+                        'wait-orange': '#fb923c', /* Orange 400 */
+                        'slew-blue': '#60a5fa', /* Blue 400 */
+                        'card-bg': '#1f2937', /* Gray 800 */
+                        'subcard-bg': '#111827', /* Gray 900 */
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="bg-gray-50 p-4 md:p-8 font-sans">
+<body class="bg-gray-900 p-4 md:p-8 font-sans text-gray-100">
 
-    <div class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-8">
-        <h1 class="text-3xl font-bold mb-4 text-gray-800 border-b pb-2">N.I.N.A. Meridian Flip Simulator</h1>
+    <div class="max-w-4xl mx-auto bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
+        <h1 class="text-3xl font-bold mb-4 text-gray-50 border-b border-gray-700 pb-2">N.I.N.A. Meridian Flip Simulator</h1>
 
         <!-- Configuration Inputs - All in one row -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
             
-            <!-- T1 Input (N.I.N.A.) - DEFAULT SET TO 0 -->
-            <div class="bg-gray-100 p-4 rounded-lg shadow-inner">
-                <label for="t1" class="block text-sm font-medium text-gray-700">Minutes after meridian (T1)</label>
-                <input type="number" id="t1" value="0" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-500 mt-1">Flip earliest start time (min)</p>
+            <!-- T1 Input (N.I.N.A.) -->
+            <div class="bg-gray-700 p-4 rounded-lg shadow-xl">
+                <label for="t1" class="block text-sm font-medium text-gray-300">Minutes after meridian (T1)</label>
+                <input type="number" id="t1" value="0" min="0" class="mt-1 block w-full border border-gray-600 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
+                <p class="text-xs text-gray-400 mt-1">Flip earliest start time (min)</p>
             </div>
 
             <!-- T2 Input (N.I.N.A.) -->
-            <div class="bg-gray-100 p-4 rounded-lg shadow-inner">
-                <label for="t2" class="block text-sm font-medium text-gray-700">Max. minutes after meridian (T2)</label>
-                <input type="number" id="t2" value="15" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-500 mt-1">Flip software deadline (min)</p>
+            <div class="bg-gray-700 p-4 rounded-lg shadow-xl">
+                <label for="t2" class="block text-sm font-medium text-gray-300">Max. minutes after meridian (T2)</label>
+                <input type="number" id="t2" value="15" min="0" class="mt-1 block w-full border border-gray-600 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
+                <p class="text-xs text-gray-400 mt-1">Flip software deadline (min)</p>
             </div>
 
             <!-- T_Pause Input (N.I.N.A.) -->
-            <div class="bg-gray-100 p-4 rounded-lg shadow-inner">
-                <label for="t_pause" class="block text-sm font-medium text-gray-700">Pause before meridian</label>
-                <input type="number" id="t_pause" value="0" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-500 mt-1">Stops tracking before Meridian (min)</p>
+            <div class="bg-gray-700 p-4 rounded-lg shadow-xl">
+                <label for="t_pause" class="block text-sm font-medium text-gray-300">Pause before meridian</label>
+                <input type="number" id="t_pause" value="0" min="0" class="mt-1 block w-full border border-gray-600 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
+                <p class="text-xs text-gray-400 mt-1">Stops tracking before Meridian (min)</p>
             </div>
             
             <!-- Mount Limit Input (Physical Constraint) -->
-            <div class="bg-yellow-50 p-4 rounded-lg shadow-inner">
-                <label for="t_mount_limit" class="block text-sm font-medium text-gray-700">Max. Mount Tracking Past Meridian</label>
-                <input type="number" id="t_mount_limit" value="20" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
-                <p class="text-xs text-gray-500 mt-1">Absolute physical/driver limit (min)</p>
+            <div class="bg-yellow-900/50 p-4 rounded-lg shadow-xl border border-yellow-700">
+                <label for="t_mount_limit" class="block text-sm font-medium text-yellow-300">Max. Mount Tracking Past Meridian</label>
+                <input type="number" id="t_mount_limit" value="20" min="0" class="mt-1 block w-full border border-yellow-800 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
+                <p class="text-xs text-yellow-400 mt-1">Absolute physical/driver limit (min)</p>
             </div>
 
         </div>
 
         <!-- Timeline Visualization (Moved to the top) -->
         <div class="mb-8">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">Timeline Visualization (Total Downtime: <span id="total-time-min" class="font-mono text-downtime-red font-bold"></span>)</h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-200">Timeline Visualization (Total Downtime: <span id="total-time-min" class="font-mono text-downtime-red font-bold"></span>)</h2>
             <div id="timeline-chart" class="timeline-container">
                 <div class="meridian-line"></div>
                 <!-- Timeline segments and Mount Limit line will be injected here -->
             </div>
-            <p class="text-xs text-gray-500 mt-3 text-center">Timeline is scaled dynamically. Hover over segments for detail. (Scroll horizontally if needed)</p>
+            <p class="text-xs text-gray-400 mt-3 text-center">Timeline is scaled dynamically. Hover over segments for detail. (Scroll horizontally if needed)</p>
         </div>
 
 
         <!-- Dynamic Settings & Scenario Selector -->
-        <div class="bg-blue-50 p-6 rounded-xl mb-8 border border-blue-200">
-            <h2 class="text-xl font-semibold mb-4 text-blue-800">Scenario Selector: Last Exposure End Time</h2>
+        <div class="bg-blue-900/40 p-6 rounded-xl mb-8 border border-blue-800">
+            <h2 class="text-xl font-semibold mb-4 text-blue-300">Scenario Selector: Last Exposure End Time</h2>
             
             <!-- Exposure End Time Slider -->
             <div class="mb-6">
-                <label for="t_end_exp" class="block text-lg font-medium text-gray-800 mb-2">
+                <label for="t_end_exp" class="block text-lg font-medium text-gray-200 mb-2">
                     Simulated End Time of Last Exposure: 
-                    <span id="t_end_exp_display" class="font-mono text-blue-700 ml-2"></span>
+                    <span id="t_end_exp_display" class="font-mono text-blue-400 ml-2"></span>
                 </label>
                 <input type="range" id="t_end_exp" value="0" min="-180" max="300" step="10" 
-                       class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer" oninput="calculateFlip()">
-                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                       class="w-full h-2 bg-blue-800 rounded-lg appearance-none cursor-pointer" oninput="calculateFlip()">
+                <div class="flex justify-between text-xs text-gray-400 mt-1">
                     <span>-3m (Well Before Meridian)</span>
-                    <span class="text-gray-800 font-semibold">Meridian (0s)</span>
+                    <span class="text-gray-200 font-semibold">Meridian (0s)</span>
                     <span>+5m (Well After Meridian)</span>
                 </div>
             </div>
 
             <!-- System Constants -->
-            <div class="bg-blue-100 p-3 rounded-lg text-xs text-blue-800">
+            <div class="bg-blue-900 p-3 rounded-lg text-xs text-blue-400">
                 <h3 class="font-bold mb-1">Post-Flip Time Assumptions:</h3>
                 <ul class="list-disc list-inside space-y-0.5">
                     <li>Slew Time: 45s (Fixed downtime for mount flip)</li>
@@ -185,9 +197,9 @@
 
 
         <!-- Results and Summary -->
-        <div class="mb-8 p-6 bg-green-50 border-2 border-green-300 rounded-xl">
-            <h2 class="text-2xl font-bold mb-4 text-green-900">Flip Outcome Summary</h2>
-            <div id="summary" class="text-base text-gray-700 space-y-2">
+        <div class="mb-8 p-6 bg-green-900/40 border-2 border-green-700 rounded-xl">
+            <h2 class="text-2xl font-bold mb-4 text-green-300">Flip Outcome Summary</h2>
+            <div id="summary" class="text-base text-gray-200 space-y-2">
                 <!-- Summary will be injected here -->
             </div>
         </div>
@@ -413,23 +425,23 @@
 
 
             let summaryHTML = `
-                <p><strong>Scenario Status:</strong> <span class="text-blue-700">${scenarioDescription}</span></p>
-                <p><strong>Effective Flip Deadline:</strong> <span class="font-mono text-base text-yellow-600">${formatTime(T_Effective_Deadline)}</span> (Minimum of T2: ${formatTime(T2_sec_software)} and Mount Limit: ${formatTime(T_MountLimit_sec)})</p>
+                <p><strong>Scenario Status:</strong> <span class="text-blue-400">${scenarioDescription}</span></p>
+                <p><strong>Effective Flip Deadline:</strong> <span class="font-mono text-base text-yellow-500">${formatTime(T_Effective_Deadline)}</span> (Minimum of T2: ${formatTime(T2_sec_software)} and Mount Limit: ${formatTime(T_MountLimit_sec)})</p>
                 
-                <hr class="my-3 border-green-200">
+                <hr class="my-3 border-gray-700">
 
-                <p><strong>Tracking Stopped At:</strong> <span class="font-mono text-lg text-red-600">${formatTime(t_DowntimeStart)}</span></p>
-                <p><strong>Flip Initiated At:</strong> <span class="font-mono text-lg text-blue-600">${formatTime(t_FlipStart)}</span></p>
+                <p><strong>Tracking Stopped At:</strong> <span class="font-mono text-lg text-red-400">${formatTime(t_DowntimeStart)}</span></p>
+                <p><strong>Flip Initiated At:</strong> <span class="font-mono text-lg text-blue-400">${formatTime(t_FlipStart)}</span></p>
                 
-                <hr class="my-3 border-green-200">
+                <hr class="my-3 border-gray-700">
 
                 <p><strong>Pre-Flip Wait Time (T_Wait):</strong> <span class="font-mono text-wait-orange text-lg">${formatTime(T_Wait)}</span></p>
                 <p><strong>Post-Flip Recovery (T_PostFlip):</strong> <span class="font-mono text-slew-blue text-lg">${formatTime(T_PostFlip)}</span> (Slew Time Only)</p>
                 
-                <hr class="my-3 border-green-200">
+                <hr class="my-3 border-gray-700">
 
                 <p class="mt-4 text-xl"><strong>TOTAL DOWNTIME:</strong> <span class="text-downtime-red font-bold font-mono">${formatTime(T_Downtime)}</span></p>
-                <p class="mt-1 text-sm text-gray-500">Total time from Meridian (t=0) to Imaging Resumption: <span class="font-mono">${formatTime(time_meridian_to_resume)}</span></p>
+                <p class="mt-1 text-sm text-gray-400">Total time from Meridian (t=0) to Imaging Resumption: <span class="font-mono">${formatTime(time_meridian_to_resume)}</span></p>
             `;
             document.getElementById('summary').innerHTML = summaryHTML;
             document.getElementById('total-time-min').textContent = formatTime(T_Downtime);
