@@ -6,6 +6,13 @@
     <title>Meridian Flip Timeline Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Define custom colors/classes for dark theme segments */
+        .bg-primary-green\/70 { background-color: rgba(16, 185, 129, 0.7); } /* Green 500 w/ opacity */
+        .bg-primary-green\/90 { background-color: rgba(16, 185, 129, 0.9); } /* Green 500 w/ opacity */
+        .bg-wait-orange { background-color: #f97316; } /* Orange 600 */
+        .bg-slew-blue { background-color: #3b82f6; } /* Blue 500 */
+        .bg-downtime-red { background-color: #ef4444; } /* Red 500 */
+
         /* Custom styles for the timeline */
         .timeline-segment {
             transition: all 0.3s ease-out;
@@ -270,8 +277,9 @@
         
         /**
          * Renders the zoomable/pannable time axis below the main timeline.
+         * T1_sec is passed explicitly to check for overlap conditions.
          */
-        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline) {
+        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec) {
             const axisChart = document.getElementById('time-axis-chart');
             const axisWrapper = document.getElementById('time-axis-wrapper');
             axisWrapper.innerHTML = '<div class="time-axis-line"></div>';
@@ -304,6 +312,7 @@
             // Position of the meridian (t=0)
             const meridianPos = contentStart; 
 
+            // Marker data points
             const timeMarkers = [
                 { time: t_DowntimeStart, label: 'Tracking Stops', color: 'text-red-400', special: 'stop' },
                 { time: t_FlipStart, label: 'Flip Starts (T1)', color: 'text-blue-400', special: 'flip' },
@@ -326,9 +335,9 @@
                 // Position relative to the *start* of the scaled content (which is -maxTime)
                 const position = (markerTime + maxTime) * currentScaleFactor; 
                 
-                // Skip rendering the marker if it's the Meridian time, to prevent overlap (handled by special marker)
-                if (markerTime === 0 && marker.label === 'Flip Starts (T1)') {
-                    // Check if Flip Starts and Meridian are the same time
+                // Skip rendering the marker if it's the Meridian time (t=0) AND Flip Start is also t=0, to prevent massive overlap
+                // The T1_sec variable is now passed into the function scope.
+                if (Math.abs(markerTime) < 1 && marker.label === 'Flip Starts (T1)' && Math.abs(T1_sec) < 1) {
                     return; 
                 }
 
@@ -339,7 +348,7 @@
                 
                 const markerLabel = document.createElement('span');
                 
-                // Alternate placement class
+                // Alternate placement class (0 = top, 1 = bottom)
                 const placementClass = placementIndex % 2 === 0 ? 'label-top' : 'label-bottom';
                 
                 markerLabel.className = `time-marker-label ${marker.color} ${placementClass}`;
@@ -348,7 +357,7 @@
                 markerElement.appendChild(markerLabel);
                 axisWrapper.appendChild(markerElement);
 
-                // Increment index only if we rendered the marker (to handle T1=0 case)
+                // Increment index only if we rendered the marker 
                 placementIndex++;
             });
 
@@ -363,6 +372,7 @@
          */
         function renderTimeline(segments, minTime, totalTimeSpan) {
             const timelineChart = document.getElementById('timeline-chart');
+            // Clear chart and add meridian line back
             timelineChart.innerHTML = '<div class="meridian-line"></div>'; 
             
             const containerWidth = timelineChart.clientWidth || 800;
@@ -389,6 +399,8 @@
                 const width = Math.max(3, duration * scaleFactor); 
                 
                 const segmentElement = document.createElement('div');
+                // FIX: Used segment.color directly which was not mapping to Tailwind classes.
+                // Re-added the Tailwind class names defined in the script's segment data structure.
                 segmentElement.className = `timeline-segment ${segment.color} h-12 absolute flex items-center justify-center text-white text-xs whitespace-nowrap px-1 font-semibold`;
                 
                 const positionFromStartOfSpan = segment.time_start - minTime;
@@ -659,7 +671,8 @@
             
             // --- 6. Render Visualization ---
             renderTimeline(segments, minTime, totalTimeSpan);
-            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline);
+            // FIX: Pass T1_sec to renderTimeAxis so it can check for the overlap condition
+            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec);
         }
 
         // Initialize the calculation and event listeners on page load
