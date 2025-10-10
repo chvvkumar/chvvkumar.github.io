@@ -316,6 +316,11 @@
             </div>
         </div>
         <p class="text-sm text-gray-500 text-center mt-3">Click and drag the <strong class="text-green-400">Last Sub</strong> box.</p>
+        
+        <!-- Scenario Description Box -->
+        <div id="scenario-description" class="text-sm text-gray-300 text-center mt-2 mb-6 p-3 bg-gray-800 rounded-lg border border-gray-700 italic">
+            <!-- Scenario description will be populated here -->
+        </div>
 
 
         <!-- Flip Outcome Summary -->
@@ -868,9 +873,14 @@
                 <hr class="my-3 border-gray-700">
 
                 <p class="mt-1 text-sm text-gray-400">Imaging Resumes (Time after meridian): <span class="font-mono">${formatTime(time_meridian_to_resume)}</span></p>
-                <p class="mt-1 text-sm text-gray-400">${scenarioDescription}</p>
             `;
             summaryElement.innerHTML = summaryHTML;
+            
+            // Update scenario description in the new location
+            const scenarioElement = document.getElementById('scenario-description');
+            if (scenarioElement) {
+                scenarioElement.innerHTML = scenarioDescription;
+            }
         }
 
         // Initialize the calculation and event listeners on page load
