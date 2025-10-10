@@ -12,6 +12,10 @@
         .bg-wait-orange { background-color: #f97316; } /* Orange 600 */
         .bg-slew-blue { background-color: #3b82f6; } /* Blue 500 */
         .bg-downtime-red { background-color: #ef4444; } /* Red 500 */
+        .text-downtime-red { color: #ef4444; }
+        .text-wait-orange { color: #f97316; }
+        .text-slew-blue { color: #3b82f6; }
+
 
         /* Custom styles for the timeline */
         .timeline-segment {
@@ -86,9 +90,9 @@
         .time-axis-container {
             position: relative;
             width: 100%;
-            height: 100px; /* Increased height to accommodate bottom labels */
+            height: 100px; 
             margin-top: 1rem;
-            overflow-x: hidden; /* Hide default scrollbar, JS will manage pan/zoom */
+            overflow-x: hidden; 
             cursor: grab;
         }
         .time-axis-container:active {
@@ -149,6 +153,19 @@
             bottom: 100%; /* Keep meridian label on top */
             transform: translateX(-50%) translateY(5px);
         }
+
+        .flip-zone {
+            position: absolute;
+            height: 80%;
+            top: 10%;
+            background-color: rgba(59, 130, 246, 0.15); /* Blue 500 with opacity */
+            border-left: 1px dashed #3b82f6;
+            border-right: 1px dashed #3b82f6;
+        }
+        /* FIX: Explicit height for the help text container to ensure alignment */
+        .input-help-container {
+            height: 2rem; /* Sufficient height for two lines of text at 0.75rem font size */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 p-6 min-h-screen font-sans">
@@ -157,13 +174,15 @@
         <h1 class="text-3xl font-extrabold mb-8 text-blue-400">N.I.N.A. Meridian Flip Simulator</h1>
 
         <!-- Input Parameters -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <!-- T1 Input -->
             <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
                 <label for="t1" class="block text-sm font-medium text-gray-400 mb-1">Minutes after meridian (T1)</label>
-                <input type="number" id="t1" value="0" min="0" oninput="calculateFlip()"
+                <input type="number" id="t1" value="2" min="0" oninput="calculateFlip()"
                        class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <p class="text-xs text-gray-500 mt-1">Flip earliest start time (min)</p>
+                <div class="input-help-container">
+                    <p class="text-xs text-gray-500 mt-1">Flip earliest start time (min)</p>
+                </div>
             </div>
 
             <!-- T2 Input -->
@@ -171,7 +190,9 @@
                 <label for="t2" class="block text-sm font-medium text-gray-400 mb-1">Max. minutes after meridian (T2)</label>
                 <input type="number" id="t2" value="15" min="0" oninput="calculateFlip()"
                        class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <p class="text-xs text-gray-500 mt-1">Flip software deadline (min)</p>
+                <div class="input-help-container">
+                    <p class="text-xs text-gray-500 mt-1">Flip software deadline (min)</p>
+                </div>
             </div>
 
             <!-- Pause Before Meridian Input -->
@@ -179,7 +200,9 @@
                 <label for="t_pause" class="block text-sm font-medium text-gray-400 mb-1">Pause before meridian</label>
                 <input type="number" id="t_pause" value="0" min="0" oninput="calculateFlip()"
                        class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <p class="text-xs text-gray-500 mt-1">Stops tracking before Meridian (min)</p>
+                <div class="input-help-container">
+                    <p class="text-xs text-gray-500 mt-1">Stops tracking before Meridian (min)</p>
+                </div>
             </div>
 
             <!-- Mount Tracking Limit Input -->
@@ -187,7 +210,19 @@
                 <label for="t_mount_limit" class="block text-sm font-medium text-gray-400 mb-1">Max. Mount Tracking Past Meridian</label>
                 <input type="number" id="t_mount_limit" value="20" min="0" oninput="calculateFlip()"
                        class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
-                <p class="text-xs text-gray-500 mt-1">Absolute physical/driver limit (min)</p>
+                <div class="input-help-container">
+                    <p class="text-xs text-gray-500 mt-1">Absolute physical/driver limit (min)</p>
+                </div>
+            </div>
+            
+             <!-- Exposure Duration Input -->
+             <div class="bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-700">
+                <label for="t_exposure" class="block text-sm font-medium text-gray-400 mb-1">Exposure Duration</label>
+                <input type="number" id="t_exposure" value="300" min="1" oninput="calculateFlip()"
+                       class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg font-mono">
+                <div class="input-help-container">
+                    <p class="text-xs text-gray-500 mt-1">Length of the individual sub-exposure (sec)</p>
+                </div>
             </div>
         </div>
 
@@ -208,30 +243,6 @@
         <p class="text-xs text-gray-500 text-center mt-2">Use scroll wheel to **zoom** and click-and-drag to **pan** this axis.</p>
 
 
-        <!-- Scenario Selector -->
-        <div class="bg-gray-800 p-6 rounded-lg shadow-xl border border-gray-700 mt-8">
-            <h2 class="text-xl font-bold mb-4 text-blue-300">Scenario Selector: Last Exposure End Time</h2>
-            
-            <div class="flex justify-between items-center mb-4">
-                <label for="t_end_exp" class="block text-sm font-medium text-gray-300">Simulated End Time of Last Exposure:</label>
-                <span id="t_end_exp_display" class="font-mono text-lg text-yellow-400">0s</span>
-            </div>
-            
-            <input type="range" id="t_end_exp" min="-300" max="300" step="1" value="0" oninput="calculateFlip()"
-                   class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg">
-            
-            <div class="flex justify-between text-xs text-gray-500 mt-1">
-                <span>-5m (Well Before Meridian)</span>
-                <span class="text-amber-400 font-semibold">Meridian (0s)</span>
-                <span>+5m (Well After Meridian)</span>
-            </div>
-            
-            <h3 class="text-base font-semibold mt-4 text-gray-400">Post-Flip Time Assumptions:</h3>
-            <ul class="text-sm list-disc list-inside ml-4 text-gray-500">
-                <li>Slew Time: 45s (Fixed downtime for mount flip)</li>
-            </ul>
-        </div>
-        
         <!-- Flip Outcome Summary -->
         <div class="bg-green-900/30 p-6 rounded-lg shadow-xl border border-green-700 mt-8">
             <h2 class="text-xl font-bold mb-4 text-green-400">Flip Outcome Summary</h2>
@@ -277,9 +288,8 @@
         
         /**
          * Renders the zoomable/pannable time axis below the main timeline.
-         * T1_sec is passed explicitly to check for overlap conditions.
          */
-        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec) {
+        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp) {
             const axisChart = document.getElementById('time-axis-chart');
             const axisWrapper = document.getElementById('time-axis-wrapper');
             axisWrapper.innerHTML = '<div class="time-axis-line"></div>';
@@ -288,7 +298,6 @@
             const contentWidthBase = containerWidth * 0.95; 
 
             // --- Determine Scale and Span for Zoom ---
-            // Max time determines the visual range when scale is 1.0
             const maxTime = Math.max(
                 Math.abs(t_DowntimeStart), 
                 Math.abs(t_FlipStart), 
@@ -312,11 +321,39 @@
             // Position of the meridian (t=0)
             const meridianPos = contentStart; 
 
+            // Helper function to convert time to pixel position
+            const timeToPos = (time) => (time + maxTime) * currentScaleFactor;
+
+            // --- Render FLIP ZONE ---
+            if (T_Effective_Deadline > T1_sec) {
+                const flipZoneStartPos = timeToPos(T1_sec);
+                const flipZoneEndPos = timeToPos(T_Effective_Deadline);
+                const flipZoneWidth = flipZoneEndPos - flipZoneStartPos;
+
+                const flipZone = document.createElement('div');
+                flipZone.className = 'flip-zone';
+                flipZone.style.left = `${flipZoneStartPos}px`;
+                flipZone.style.width = `${flipZoneWidth}px`;
+                
+                // Add a label for the zone
+                flipZone.innerHTML = `
+                    <span class="absolute top-0 mt-2 left-1/2 transform -translate-x-1/2 text-xs font-bold text-blue-300">
+                        FLIP ZONE (${formatTime(T1_sec)} to ${formatTime(T_Effective_Deadline)})
+                    </span>
+                `;
+
+                axisWrapper.appendChild(flipZone);
+            }
+            
             // Marker data points
             const timeMarkers = [
-                { time: t_DowntimeStart, label: 'Tracking Stops', color: 'text-red-400', special: 'stop' },
-                { time: t_FlipStart, label: 'Flip Starts (T1)', color: 'text-blue-400', special: 'flip' },
-                { time: T_Effective_Deadline, label: 'Mount Deadline', color: 'text-yellow-400', special: 'limit' },
+                // Sub Exposure Markers (Top)
+                { time: t_StartLastExp, label: 'Last Sub Start', color: 'text-primary-green/70', special: 'sub-start' },
+                { time: t_DowntimeStart, label: 'Last Sub End', color: 'text-red-400', special: 'sub-end' },
+                
+                // Downtime Markers (Bottom/Alternating)
+                { time: t_FlipStart, label: 'Flip Starts', color: 'text-blue-400', special: 'flip' },
+                { time: T_Effective_Deadline, label: 'Deadline', color: 'text-yellow-400', special: 'limit' },
             ];
 
             // Use an index to alternate placement (0 = top, 1 = bottom)
@@ -326,30 +363,36 @@
             const meridianMarker = document.createElement('div');
             meridianMarker.className = 'time-marker meridian-axis-marker';
             meridianMarker.style.left = `${meridianPos}px`;
-            meridianMarker.innerHTML = `<span class="time-marker-label label-top">Meridian (${formatTime(0)})</span>`;
+            meridianMarker.innerHTML = `<span class="time-marker-label label-top">Meridian</span>`;
             axisWrapper.appendChild(meridianMarker);
             
             // 2. Render Key Time Markers
             timeMarkers.forEach(marker => {
                 const markerTime = marker.time;
-                // Position relative to the *start* of the scaled content (which is -maxTime)
-                const position = (markerTime + maxTime) * currentScaleFactor; 
+                const position = timeToPos(markerTime);
                 
-                // Skip rendering the marker if it's the Meridian time (t=0) AND Flip Start is also t=0, to prevent massive overlap
-                // The T1_sec variable is now passed into the function scope.
-                if (Math.abs(markerTime) < 1 && marker.label === 'Flip Starts (T1)' && Math.abs(T1_sec) < 1) {
+                // Skip rendering Flip Starts marker if it's right on the meridian and T1 is 0
+                if (Math.abs(markerTime) < 1 && marker.label === 'Flip Starts' && Math.abs(T1_sec) < 1) {
                     return; 
                 }
 
                 const markerElement = document.createElement('div');
-                // Use marker.color class for the label color
                 markerElement.className = `time-marker ${marker.color.replace('text-', 'bg-')}`;
                 markerElement.style.left = `${position}px`;
                 
                 const markerLabel = document.createElement('span');
                 
-                // Alternate placement class (0 = top, 1 = bottom)
-                const placementClass = placementIndex % 2 === 0 ? 'label-top' : 'label-bottom';
+                // Force sub markers to top, Deadline to bottom, and alternate the rest
+                let placementClass;
+                if (marker.special === 'sub-start' || marker.special === 'sub-end') {
+                    placementClass = 'label-top';
+                } else if (marker.special === 'limit') {
+                    placementClass = 'label-bottom';
+                } else {
+                    // Alternate placement for Flip Start and Tracking Stops
+                    // Use a unique index based on the markers to alternate between top/bottom placement
+                    placementClass = (marker.time < 0) ? 'label-bottom' : 'label-top';
+                }
                 
                 markerLabel.className = `time-marker-label ${marker.color} ${placementClass}`;
                 markerLabel.innerHTML = `${marker.label}<br/>(${formatTime(markerTime)})`;
@@ -399,8 +442,6 @@
                 const width = Math.max(3, duration * scaleFactor); 
                 
                 const segmentElement = document.createElement('div');
-                // FIX: Used segment.color directly which was not mapping to Tailwind classes.
-                // Re-added the Tailwind class names defined in the script's segment data structure.
                 segmentElement.className = `timeline-segment ${segment.color} h-12 absolute flex items-center justify-center text-white text-xs whitespace-nowrap px-1 font-semibold`;
                 
                 const positionFromStartOfSpan = segment.time_start - minTime;
@@ -510,19 +551,16 @@
             }
 
             // 1. Get User Inputs (converted to seconds where necessary)
-            // Use local variables for elements to ensure single access point
             const t1Element = document.getElementById('t1');
             const t2Element = document.getElementById('t2');
             const tPauseElement = document.getElementById('t_pause');
-            const tEndExpElement = document.getElementById('t_end_exp');
             const tMountLimitElement = document.getElementById('t_mount_limit');
-            const tEndExpDisplayElement = document.getElementById('t_end_exp_display');
+            const tExposureElement = document.getElementById('t_exposure'); // New exposure input
             const summaryElement = document.getElementById('summary');
             const totalTimeMinElement = document.getElementById('total-time-min');
             
             // Safety checks for critical elements
-            if (!t1Element || !tEndExpElement || !tEndExpDisplayElement || !summaryElement || !totalTimeMinElement) {
-                // If any critical element is missing, stop calculation
+            if (!t1Element || !t2Element || !tExposureElement || !summaryElement || !totalTimeMinElement) {
                 console.error("Critical element missing, stopping calculation.");
                 return;
             }
@@ -531,74 +569,104 @@
             const T1_min = parseFloat(t1Element.value) || 0;
             const T2_min = parseFloat(t2Element.value) || 0;
             const T_Pause_min = parseFloat(tPauseElement.value) || 0;
-            const T_End_Exp = parseFloat(tEndExpElement.value) || 0; // Scenario slider value
             const T_MountLimit_min = parseFloat(tMountLimitElement.value) || 0; 
+            const T_Exposure = parseFloat(tExposureElement.value) || 1; // Exposure duration in seconds (must be > 0)
 
-            // Update slider display
-            tEndExpDisplayElement.textContent = formatTime(T_End_Exp);
-
+            // Convert to seconds
             const T1_sec = T1_min * 60;
-            const T2_sec_software = T2_min * 60; // T2 as set in NINA
-            const T_MountLimit_sec = T_MountLimit_min * 60; // Mount's hard limit
+            const T2_sec_software = T2_min * 60; 
+            const T_MountLimit_sec = T_MountLimit_min * 60; 
             const T_Pause_sec = T_Pause_min * 60;
 
-            // The effective absolute deadline is the lesser of the software T2 and the mount's physical limit.
+
+            // --- Core Logic ---
+
+            // The effective absolute deadline (Mount Limit or T2)
             const T_Effective_Deadline = Math.min(T2_sec_software, T_MountLimit_sec);
 
-            let T_Wait = 0;
-            let t_DowntimeStart = 0;
-            let t_FlipStart = 0;
+            
+            let T_LatestEnd = 0;
             let scenarioDescription = "";
-            
-            // --- 2. Determine Tracking Stop Time (t_StopTracking) ---
-            if (T_Pause_min > 0) {
-                // Scenario 1: Forced Pause is set. Tracking stops at -T_Pause_sec.
-                t_DowntimeStart = -T_Pause_sec;
-                scenarioDescription = "Forced Pause: Tracking stopped early to avoid an obstruction.";
-            } else if (T_End_Exp > T_Effective_Deadline) {
-                // Scenario 2: Exposure ends AFTER the deadline. NINA would abort/skip the last sub and flip at the deadline.
-                t_DowntimeStart = T_Effective_Deadline - 1; 
-                t_FlipStart = T_Effective_Deadline;
-                T_Wait = 1; // Minimal wait time to force the flip at the deadline
-                scenarioDescription = "Deadline Reached: Last exposure aborted/skipped. Flip forced at deadline.";
-            } else {
-                // Scenario 3: Normal case. Tracking stops when the last successful exposure finishes.
-                t_DowntimeStart = T_End_Exp;
-                scenarioDescription = `Tracking Stopped: Last exposure ended at ${formatTime(T_End_Exp)}.`;
-            }
-            
-            // --- 3. Determine Flip Start Time (t_FlipStart) and Wait Time (T_Wait) ---
 
-            if (scenarioDescription.includes("Deadline Reached")) {
-                // t_FlipStart is already T_Effective_Deadline from Scenario 2
-            } else if (t_DowntimeStart < T1_sec) {
-                // Flip must wait until the earliest time (T1)
-                t_FlipStart = T1_sec;
+            if (T1_sec < T2_sec_software) {
+                // Scenario A: Flip Window (T1 < T2). Flip happens whenever the exposure ends between T1 and T2.
+                // The last exposure must START so it ends BEFORE T_Effective_Deadline (the hard stop).
+                T_LatestEnd = T_Effective_Deadline; 
+                scenarioDescription = `Flip Window (${formatTime(T1_sec)} to ${formatTime(T2_sec_software)}): Last exposure must end before effective deadline.`;
+            } else {
+                // Scenario B: Fixed Time Flip (T1 = T2). Flip happens precisely at T1.
+                // The last exposure must START so it ends BEFORE T1.
+                T_LatestEnd = T1_sec;
+                scenarioDescription = `Fixed Flip Time (${formatTime(T1_sec)}): Last exposure must end before T1.`;
+            }
+
+            // Now, integrate Pause Before Meridian (PBM). If PBM is set, the sequence must stop imaging 
+            // at the PBM time, regardless of T1/T2.
+            if (T_Pause_sec > 0) {
+                // If PBM is set, the sequence must stop imaging at -T_Pause_sec.
+                // The latest an exposure can end is at -T_Pause_sec.
+                // NOTE: We use T_LatestEnd = Math.min(T_LatestEnd, -T_Pause_sec) to respect the PBM stop time
+                // if it's earlier than the deadline, but this simple overwrite works for NINA's PBM design.
+                T_LatestEnd = -T_Pause_sec;
+                scenarioDescription = `Forced Pause (${formatTime(T_Pause_sec)} before meridian): Last exposure must end before PBM stop time.`;
+            }
+
+            // Calculate the actual start time of the last exposure
+            const t_StartLastExp = T_LatestEnd - T_Exposure;
+            
+            // The time tracking actually stops is the end time of the last sub:
+            const t_DowntimeStart = T_LatestEnd;
+
+            // --- Determine Flip Start Time (t_FlipStart) and Wait Time (T_Wait) ---
+            let t_FlipStart = 0;
+            let T_Wait = 0;
+
+            if (T_Pause_sec > 0 || T1_sec >= T2_sec_software) {
+                // Case 1: PBM is set OR Fixed Time Flip (T1=T2). Must wait for T1.
+                t_FlipStart = T1_sec; 
                 T_Wait = t_FlipStart - t_DowntimeStart;
-            } else {
-                // Flip starts immediately after tracking stops (since t_DowntimeStart is in the T1/T_Effective_Deadline window)
-                t_FlipStart = t_DowntimeStart;
-                T_Wait = 0;
-            }
 
+            } else { // T1 < T2 (Flip Window)
+                // Case 2: Flip Window. Flip immediately after last exposure ends, as long as it's not before T1.
+                t_FlipStart = Math.max(T1_sec, t_DowntimeStart);
+                T_Wait = t_FlipStart - t_DowntimeStart;
+            }
             
-            // --- 4. Calculate Post-Flip Recovery Time (T_PostFlip) ---
+            // Ensure T_Wait is not negative (shouldn't happen with the Math.max, but for safety)
+            T_Wait = Math.max(0, T_Wait);
+            
+            // --- Visualization Segment Generation ---
+
             const T_PostFlip = SYSTEM_CONSTANTS.T_Slew;
             let current_time = t_FlipStart;
             const segments = [];
 
-            // --- Timeline Data Structure ---
-            
-            // 0. Initial Tracking (Pre-Downtime)
-            const T_Tracking_Context = 120; // Show 2 minutes of tracking context
-            segments.push({ 
-                name: 'IMAGING (CONTEXT)', 
-                short_name: 'IMAGING', 
-                duration: T_Tracking_Context, 
-                color: 'bg-primary-green/70', 
-                time_start: t_DowntimeStart - T_Tracking_Context,
+            // 0. Initial Tracking (Multiple Sub-exposures for context)
+            const numContextSubs = 3; 
+            let t_sub_start = t_StartLastExp;
+
+            for(let i = 0; i < numContextSubs; i++) {
+                t_sub_start -= T_Exposure;
+                segments.push({ 
+                    name: `Sub N-${numContextSubs - i}`, 
+                    short_name: `Sub N-${numContextSubs - i}`, 
+                    duration: T_Exposure, 
+                    color: 'bg-primary-green/70', 
+                    time_start: t_sub_start,
+                    time_end: t_sub_start + T_Exposure
+                });
+            }
+
+            // Last Sub-exposure (Sub N)
+            segments.push({
+                name: 'LAST SUB-EXPOSURE (Sub N)', 
+                short_name: 'LAST SUB', 
+                duration: T_Exposure, 
+                color: 'bg-primary-green/90', 
+                time_start: t_StartLastExp,
                 time_end: t_DowntimeStart
             });
+
 
             // 1. Pre-Flip Wait (T_Wait)
             if (T_Wait > 0) {
@@ -639,7 +707,7 @@
 
             // --- 5. Final Calculations and Summary Output ---
             const T_Downtime = T_Wait + T_PostFlip;
-            const time_meridian_to_resume = current_time; // This is the total time from t=0 to imaging resume
+            const time_meridian_to_resume = current_time; 
 
             // Determine the visualization span
             const minTime = segments.reduce((min, s) => Math.min(min, s.time_start), 0);
@@ -649,7 +717,12 @@
 
             let summaryHTML = `
                 <p><strong>Scenario Status:</strong> <span class="text-blue-400">${scenarioDescription}</span></p>
-                <p><strong>Effective Flip Deadline:</strong> <span class="font-mono text-base text-yellow-500">${formatTime(T_Effective_Deadline)}</span> (Minimum of T2: ${formatTime(T2_sec_software)} and Mount Limit: ${formatTime(T_MountLimit_sec)})</p>
+                <p><strong>Last Sub-exposure Start:</strong> <span class="font-mono text-base text-green-400">${formatTime(t_StartLastExp)}</span></p>
+                <p><strong>Last Sub-exposure End:</strong> <span class="font-mono text-base text-green-400">${formatTime(t_DowntimeStart)}</span></p>
+
+                <hr class="my-3 border-gray-700">
+                
+                <p><strong>Effective Flip Deadline:</strong> <span class="font-mono text-base text-yellow-500">${formatTime(T_Effective_Deadline)}</span> (Min of T2: ${formatTime(T2_sec_software)} and Mount Limit: ${formatTime(T_MountLimit_sec)})</p>
                 
                 <hr class="my-3 border-gray-700">
 
@@ -671,22 +744,12 @@
             
             // --- 6. Render Visualization ---
             renderTimeline(segments, minTime, totalTimeSpan);
-            // FIX: Pass T1_sec to renderTimeAxis so it can check for the overlap condition
-            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec);
+            // Pass T1_sec and t_StartLastExp for marker generation
+            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp);
         }
 
         // Initialize the calculation and event listeners on page load
         document.addEventListener('DOMContentLoaded', () => {
-            const tEndExpSlider = document.getElementById('t_end_exp');
-            
-            // Check if the slider element exists before trying to set its value
-            if (tEndExpSlider) {
-                // Set the slider's initial value to 0s to center it on meridian
-                tEndExpSlider.value = 0; 
-            } else {
-                console.error("Initialization error: 't_end_exp' slider element not found.");
-            }
-
             // Setup Pan/Zoom events for the TIME AXIS CHART
             setupPanZoom();
 
