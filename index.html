@@ -289,7 +289,7 @@
         /**
          * Renders the zoomable/pannable time axis below the main timeline.
          */
-        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp) {
+        function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec) {
             const axisChart = document.getElementById('time-axis-chart');
             const axisWrapper = document.getElementById('time-axis-wrapper');
             axisWrapper.innerHTML = '<div class="time-axis-line"></div>';
@@ -302,6 +302,7 @@
                 Math.abs(t_DowntimeStart), 
                 Math.abs(t_FlipStart), 
                 T_Effective_Deadline,
+                T_MountLimit_sec, // Include T_MountLimit_sec in the span calculation
                 300 // Minimum span of 5 minutes (300s) on either side
             ); 
             
@@ -353,7 +354,8 @@
                 
                 // Downtime Markers (Bottom/Alternating)
                 { time: t_FlipStart, label: 'Flip Starts', color: 'text-blue-400', special: 'flip' },
-                { time: T_Effective_Deadline, label: 'Deadline', color: 'text-yellow-400', special: 'limit' },
+                // Mount Limit Marker (Now included)
+                { time: T_MountLimit_sec, label: 'Mount Limit', color: 'text-yellow-400', special: 'limit' }, 
             ];
 
             // Use an index to alternate placement (0 = top, 1 = bottom)
@@ -390,7 +392,6 @@
                     placementClass = 'label-bottom';
                 } else {
                     // Alternate placement for Flip Start and Tracking Stops
-                    // Use a unique index based on the markers to alternate between top/bottom placement
                     placementClass = (marker.time < 0) ? 'label-bottom' : 'label-top';
                 }
                 
@@ -442,6 +443,7 @@
                 const width = Math.max(3, duration * scaleFactor); 
                 
                 const segmentElement = document.createElement('div');
+                // Ensure tailwind classes are correctly applied for styling and hover effects
                 segmentElement.className = `timeline-segment ${segment.color} h-12 absolute flex items-center justify-center text-white text-xs whitespace-nowrap px-1 font-semibold`;
                 
                 const positionFromStartOfSpan = segment.time_start - minTime;
@@ -454,6 +456,7 @@
                 const timeStartLabel = segment.time_start < 0 ? `${formatTime(segment.time_start)} (Before Meridian)` : `${formatTime(segment.time_start)} (After Meridian)`;
                 const timeEndLabel = segment.time_end < 0 ? `${formatTime(segment.time_end)} (Before Meridian)` : `${formatTime(segment.time_end)} (After Meridian)`;
 
+                // Re-added the tooltip structure
                 segmentElement.innerHTML = `
                     <span class="text-shadow-sm pointer-events-none">${segment.short_name}</span>
                     <div class="tooltip absolute bottom-full mb-3 p-3 bg-gray-800 text-white rounded-md shadow-2xl text-center text-sm">
@@ -745,7 +748,7 @@
             // --- 6. Render Visualization ---
             renderTimeline(segments, minTime, totalTimeSpan);
             // Pass T1_sec and t_StartLastExp for marker generation
-            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp);
+            renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec);
         }
 
         // Initialize the calculation and event listeners on page load
