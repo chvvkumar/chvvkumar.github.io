@@ -72,10 +72,10 @@
             text-align: center;
             width: 100px;
         }
-        /* Timeline Container */
+        /* Timeline Container - HEIGHT INCREASED */
         .timeline-container {
             position: relative;
-            height: 150px; 
+            height: 300px; /* Tripled height for tooltip visibility */
             display: flex;
             align-items: center;
             /* Horizontal scrolling is needed if the total time span exceeds screen width */
@@ -114,10 +114,10 @@
         <!-- Configuration Inputs - All in one row -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
             
-            <!-- T1 Input (N.I.N.A.) -->
+            <!-- T1 Input (N.I.N.A.) - DEFAULT SET TO 0 -->
             <div class="bg-gray-100 p-4 rounded-lg shadow-inner">
                 <label for="t1" class="block text-sm font-medium text-gray-700">Minutes after meridian (T1)</label>
-                <input type="number" id="t1" value="2" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
+                <input type="number" id="t1" value="0" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 font-mono text-center" oninput="calculateFlip()">
                 <p class="text-xs text-gray-500 mt-1">Flip earliest start time (min)</p>
             </div>
 
@@ -423,7 +423,6 @@
                 
                 <hr class="my-3 border-green-200">
 
-                <!-- FIX: Removed LaTeX markup for clean display -->
                 <p><strong>Pre-Flip Wait Time (T_Wait):</strong> <span class="font-mono text-wait-orange text-lg">${formatTime(T_Wait)}</span></p>
                 <p><strong>Post-Flip Recovery (T_PostFlip):</strong> <span class="font-mono text-slew-blue text-lg">${formatTime(T_PostFlip)}</span> (Slew Time Only)</p>
                 
@@ -441,6 +440,9 @@
 
         // Initialize the calculation on page load
         window.onload = () => {
+            // Set the slider's initial value to 0s to center it on meridian
+            document.getElementById('t_end_exp').value = 0; 
+
             calculateFlip();
             // Recalculate on resize to maintain responsiveness
             window.addEventListener('resize', calculateFlip); 
