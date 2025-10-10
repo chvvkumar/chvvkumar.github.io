@@ -121,14 +121,6 @@
             transform: translateX(-50%) translateY(10px); /* Small offset down for clearance */
         }
 
-        /* 3. PBM Meridian Stop Label (NEW: Static at t=0 bottom) */
-        .pbm-meridian-stop-label-static {
-            color: #f87171; /* Red for Stop */
-            font-weight: bold;
-            top: 100%; /* Low below, same vertical position as mount limit label */
-            transform: translateX(-50%) translateY(-40px);
-        }
-
         /* NEW: Visual marker for actual stop point (t_DowntimeStart) */
         .actual-stop-marker {
             position: absolute;
@@ -140,6 +132,18 @@
             z-index: 50; 
         }
 
+        /* Zone Label Styling */
+        .zone-label {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: bold;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 3;
+            white-space: nowrap;
+        }
 
         /* Flip Zone Styling */
         .flip-zone {
@@ -173,7 +177,6 @@
             border-right: 1px solid #f87171; /* Solid line at Meridian start of pause */
             z-index: 5; /* Ensure it is behind the meridian line */
         }
-        /* Removed .pbm-zone-label CSS block as the label is no longer used */
 
         /* T1 Wait Zone Styling */
         .t1-wait-zone {
@@ -362,6 +365,29 @@
         }
         
         /**
+         * Calculates the appropriate font size for a label to fit within a given width
+         * @param {string} text - The text content
+         * @param {number} containerWidth - Width of the container in pixels
+         * @param {number} maxFontSize - Maximum font size in rem
+         * @returns {number} Font size in rem
+         */
+        function calculateFontSize(text, containerWidth, maxFontSize = 2) {
+            // Approximate character width ratio (characters per rem of font size)
+            const charWidthRatio = 0.6; // Adjusted for bold font
+            const padding = 20; // Padding on sides
+            const availableWidth = containerWidth - padding;
+            
+            // Calculate what font size would fit
+            const textLength = text.length;
+            let fontSize = availableWidth / (textLength * charWidthRatio * 16); // 16px = 1rem
+            
+            // Constrain between min and max
+            fontSize = Math.max(0.75, Math.min(maxFontSize, fontSize));
+            
+            return fontSize;
+        }
+        
+        /**
          * Renders the static time axis, markers, and the draggable sub chain.
          */
         function renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec, T_Exposure, t_SubChainStart, T_Pause_sec) {
@@ -415,6 +441,15 @@
                 pbmZone.style.left = `${pbmZoneStartPos}px`;
                 pbmZone.style.width = `${pbmZoneWidth}px`;
                 
+                // Add PBM zone label with dynamic sizing
+                const pbmLabel = document.createElement('div');
+                pbmLabel.className = 'zone-label';
+                pbmLabel.style.color = '#f87171';
+                pbmLabel.textContent = 'PBM';
+                const pbmFontSize = calculateFontSize('PBM', pbmZoneWidth, 2.5);
+                pbmLabel.style.fontSize = `${pbmFontSize}rem`;
+                pbmZone.appendChild(pbmLabel);
+                
                 axisWrapper.appendChild(pbmZone);
             }
 
@@ -428,6 +463,15 @@
                 t1WaitZone.className = 't1-wait-zone';
                 t1WaitZone.style.left = `${t1ZoneStartPos}px`;
                 t1WaitZone.style.width = `${t1ZoneWidth}px`;
+                
+                // Add T1 zone label with dynamic sizing
+                const t1Label = document.createElement('div');
+                t1Label.className = 'zone-label';
+                t1Label.style.color = '#f97316';
+                t1Label.textContent = 'T1';
+                const t1FontSize = calculateFontSize('T1', t1ZoneWidth, 2.5);
+                t1Label.style.fontSize = `${t1FontSize}rem`;
+                t1WaitZone.appendChild(t1Label);
                 
                 axisWrapper.appendChild(t1WaitZone);
             }
@@ -450,6 +494,16 @@
                 zoneLabel.innerHTML = `FLIP WINDOW (${formatTime(T1_sec)} to ${formatTime(T_Effective_Deadline)})`;
 
                 flipZone.appendChild(zoneLabel);
+                
+                // Add T2 zone label with dynamic sizing (centered in flip zone)
+                const t2Label = document.createElement('div');
+                t2Label.className = 'zone-label';
+                t2Label.style.color = '#3b82f6';
+                t2Label.textContent = 'T2';
+                const t2FontSize = calculateFontSize('T2', flipZoneWidth, 2.5);
+                t2Label.style.fontSize = `${t2FontSize}rem`;
+                flipZone.appendChild(t2Label);
+                
                 axisWrapper.appendChild(flipZone);
             }
             
@@ -554,15 +608,8 @@
             startLabel.style.left = `${timeToPos(t_StartLastExp)}px`;
             axisWrapper.appendChild(startLabel);
             
-            // 10. Add Conditional PBM Tracking Stop Label (Static at t=0 bottom) and actual stop marker
+            // 10. Add Conditional visual marker for actual stop point
             if (T_Pause_sec > 0) {
-                 // Label requested by user: Static at Meridian, bottom, text changed to "Pause Before Meridian"
-                 const pbmStopLabel = document.createElement('span');
-                 pbmStopLabel.className = 'time-marker-label pbm-meridian-stop-label-static';
-                 pbmStopLabel.style.left = `${timeToPos(0)}px`;
-                 pbmStopLabel.innerHTML = `Pause Before Meridian`;
-                 axisWrapper.appendChild(pbmStopLabel);
-
                  // Add a visual marker for the actual stop time (t_DowntimeStart)
                  const stopMarker = document.createElement('div');
                  stopMarker.className = 'actual-stop-marker';
