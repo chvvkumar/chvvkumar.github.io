@@ -26,6 +26,18 @@
             border-radius: 0.5rem; /* Added rounded corners */
         }
 
+        /* Canvas Styling for Angular Diagram */
+        #meridian-diagram-canvas {
+            background-color: #1f2937; /* Dark background matching the time axis */
+            border: 2px solid #374151; 
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            /* Ensure the canvas is responsive */
+            width: 100%;
+            /* Removed max-width restriction to match the linear axis container width */
+        }
+
         /* Time Axis Styles (Static and Taller) */
         .time-axis-container {
             position: relative;
@@ -70,9 +82,13 @@
             z-index: 10;
             border-radius: 1px;
         }
-        .flip-line { background-color: #3b82f6; } /* Blue */
-        .meridian-line { background-color: #f59e0b; width: 3px; } /* Yellow/Orange */
-        .mount-limit-line { background-color: #f87171; width: 2px; border-left: 2px dashed #f87171; } /* Reddish */
+        /* Blue for Flip Start/T2 */
+        .flip-line { background-color: #3b82f6; } 
+        /* Yellow/Orange for Meridian */
+        .meridian-line { background-color: #f59e0b; width: 3px; } 
+        /* Reddish for Mount Limit/PBM */
+        /* Updated: Mount limit line is now solid (no dashed border) and thicker (3px) to match the change in drawLine logic */
+        .mount-limit-line { background-color: #f87171; width: 3px; border-left: none; } 
 
 
         /* Markers and Labels */
@@ -96,8 +112,9 @@
         }
         
         /* 1. FLIP START LABEL: Halfway between timeline (50%) and flip zone top (10%) = 30% */
+        /* Changed to use blue to match the flip zone */
         .flip-start-label-main { 
-            color: #3b82f6;
+            color: #3b82f6; /* Blue to match the line */
             font-weight: bold;
             top: 30%; 
             bottom: auto; /* Important: reset bottom property */
@@ -145,7 +162,7 @@
             white-space: nowrap;
         }
 
-        /* Flip Zone Styling */
+        /* Flip Zone Styling (Blue) */
         .flip-zone {
             position: absolute;
             height: 80%;
@@ -168,7 +185,7 @@
             z-index: 30;
         }
 
-        /* PBM Zone Styling */
+        /* PBM Zone Styling (Reddish) */
         .pbm-zone {
             position: absolute;
             height: 80%;
@@ -178,7 +195,7 @@
             z-index: 5; /* Ensure it is behind the meridian line */
         }
 
-        /* T1 Wait Zone Styling */
+        /* T1 Wait Zone Styling (Orange) */
         .t1-wait-zone {
             position: absolute;
             height: 80%;
@@ -267,8 +284,8 @@
     <div class="max-w-4xl mx-auto w-full">
         <!-- Header -->
         <h1 class="text-3xl font-extrabold mb-2 text-blue-400 text-center">N.I.N.A. Meridian Flip Simulator</h1>
-        <p class="text-center text-gray-500 text-sm mb-6">by Kumar Challa</p>
-        <p class="text-center text-gray-400 mb-6">Visualize how your sub-exposure duration, flip settings, and mount limits interact near the meridian.</p>
+        <p class="text-center text-gray-500 text-sm mb-6">By Kumar Challa</p> <!-- Added Author Name -->
+        <p class="text-center text-gray-500 text-sm mb-6">Visualize how your sub-exposure duration, flip settings, and mount limits interact near the meridian.</p>
 
         <!-- Input Parameters (Responsive Grid Layout) -->
         <div class="grid gap-4 mb-8 input-grid">
@@ -308,8 +325,14 @@
             </div>
         </div>
         
+        <!-- NEW: Angular Visualization -->
+        <h2 class="text-xl font-bold mb-3 mt-8 text-gray-200 border-b border-gray-700 pb-2">Angular Sky Visualization</h2>
+        <!-- Removed explicit width attribute. Canvas scales 100% via CSS. -->
+        <canvas id="meridian-diagram-canvas" height="350" class="mx-auto block"></canvas>
+        <p class="text-sm text-gray-500 text-center mt-3 mb-6">Zenith is the Meridian (straight up). The <strong class="text-blue-400">Calculated Flip Start</strong> line shows when the flip will be initiated. <strong>The angular scale is exaggerated for clarity.</strong></p> <!-- FIXED: Removed ** from the end -->
+
         <!-- Key Timing Events (Static Reference Axis with Draggable Sub) -->
-        <h2 class="text-xl font-bold mb-3 mt-8 text-gray-200 border-b border-gray-700 pb-2">Timing Visualization</h2>
+        <h2 class="text-xl font-bold mb-3 mt-8 text-gray-200 border-b border-gray-700 pb-2">Linear Timing Visualization</h2>
         <div id="time-axis-chart" class="time-axis-container">
             <div id="time-axis-wrapper" class="time-axis-line-wrapper">
                  <!-- Time axis elements (lines, labels, subs) are generated here by JavaScript -->
@@ -345,6 +368,243 @@
         const SYSTEM_CONSTANTS = {
             T_Slew: 45,       // Mount Slew/Flip Time (seconds)
         };
+        
+        /**
+         * Converts time (seconds) to an angle (radians) using a proportional but exaggerated scale.
+         * T=0 (Meridian) maps to 90 degrees. T_max_display maps to 20 degrees.
+         * T_neg_max_display maps to 160 degrees.
+         */
+        const convertTimeToAngle = (timeInSeconds, T_neg_max_display, T_pos_max_display) => {
+            const meridianAngle = 90; // degrees
+            const angularSpan = 70; // 90 - 20 = 70. 90 + 70 = 160.
+
+            let angleDegrees;
+
+            if (timeInSeconds >= 0) {
+                // Positive time (West - right side): 90 deg down to 20 deg
+                const T_pos = timeInSeconds;
+                const timeRatio = Math.min(1, T_pos / T_pos_max_display);
+                angleDegrees = meridianAngle - (timeRatio * angularSpan);
+            } else {
+                // Negative time (East - left side): 90 deg up to 160 deg
+                const T_neg = Math.abs(timeInSeconds);
+                const timeRatio = Math.min(1, T_neg / T_neg_max_display);
+                angleDegrees = meridianAngle + (timeRatio * angularSpan);
+            }
+            
+            // Convert degrees to radians
+            return angleDegrees * (Math.PI / 180);
+        };
+
+        /**
+         * Renders the semi-circular angular diagram.
+         */
+        function renderAngularDiagram(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, T2_sec_software, T_MountLimit_sec, T_Pause_sec, T_neg_max_display, T_pos_max_display) {
+            const canvas = document.getElementById('meridian-diagram-canvas');
+            if (!canvas) return;
+            
+            // Set canvas size for high-res drawing that scales down visually
+            // Use clientWidth to match the width of the container/linear axis
+            const W = canvas.clientWidth; 
+            const H = 350;
+            canvas.width = W;
+            canvas.height = H;
+
+            const ctx = canvas.getContext('2d');
+            
+            // Canvas Setup (Dark background)
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(0, 0, W, H);
+
+            // Center and Radius
+            // Adjust Cx for center, and R to fit W
+            const Cx = W / 2;
+            const Cy = H * 0.95; // Center point is near the bottom center
+            const R = Math.min(Cx, H * 0.8) * 0.9; // Maximize radius but keep within height/width
+            const HorizonY = Cy;
+            
+            // Text configuration
+            ctx.strokeStyle = '#f3f4f6';
+            ctx.lineWidth = 2;
+            ctx.font = '14px Inter, sans-serif'; // Default font size
+            
+            // --- 1. Draw Horizon Line (Base of the Diagram) ---
+            ctx.beginPath();
+            ctx.moveTo(Cx - R, HorizonY);
+            ctx.lineTo(Cx + R, HorizonY);
+            ctx.strokeStyle = '#9ca3af'; // Gray horizon line
+            ctx.stroke();
+
+            // --- 2. Draw Main Arc (Sky) ---
+            ctx.beginPath();
+            // Draw the semi-circle from 180 deg (left horizon) to 0 deg (right horizon)
+            ctx.arc(Cx, Cy, R, Math.PI, 0); 
+            ctx.strokeStyle = '#d1d5db'; // Lighter arc line
+            ctx.stroke();
+
+            // Helper function to draw a line from center (Cx, Cy) to (x, y) on the arc
+            const drawLine = (timeInSeconds, color, isDashed = false, thickness = 2, lengthFactor = 1.0) => {
+                // Use the new proportional conversion function
+                const angleRad = convertTimeToAngle(timeInSeconds, T_neg_max_display, T_pos_max_display);
+                const r_draw = R * lengthFactor;
+                const x = Cx + r_draw * Math.cos(angleRad);
+                const y = Cy - r_draw * Math.sin(angleRad); 
+                
+                ctx.beginPath();
+                ctx.moveTo(Cx, Cy);
+                ctx.lineTo(x, y);
+                
+                ctx.strokeStyle = color;
+                ctx.lineWidth = thickness;
+                
+                if (isDashed) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
+                ctx.stroke();
+                return { x, y, angleRad }; // Return endpoint for labeling
+            };
+            
+            // --- 3. Draw Marker Lines (No Labels here) ---
+
+            // A. Meridian (Yellow line, T=0) - Matches linear axis
+            drawLine(0, '#f59e0b', false, 3);
+            ctx.fillStyle = '#f59e0b';
+            ctx.textAlign = 'center';
+            ctx.fillText('Meridian', Cx, Cy - R - 5);
+            
+            // A-1. Calculated Flip Start (BLUE dashed line, t_FlipStart) - REVERTED TO BLUE
+            drawLine(t_FlipStart, '#3b82f6', true, 2, 1.0); 
+            
+            // B. T1 (RED line, T1_sec) - CHANGED TO RED
+            if (T1_sec > 0) {
+                drawLine(T1_sec, '#ef4444', false, 2);
+            }
+
+            // C. T2 (Blue line, T2_sec_software) - Solid (T2 is part of the blue flip window)
+            if (T2_sec_software > 0) {
+                drawLine(T2_sec_software, '#3b82f6', false, 2);
+            }
+            
+            // D. Mount Limit (Solid Red line, T_MountLimit_sec)
+            if (T_MountLimit_sec > 0) {
+                drawLine(T_MountLimit_sec, '#f87171', false, 3); 
+            }
+            
+            // E. Pause Before Meridian (PBM) - T_PBM_Deadline (Negative time) - CHANGED TO RED
+            if (T_Pause_sec > 0) {
+                const T_PBM_Deadline = -T_Pause_sec;
+                drawLine(T_PBM_Deadline, '#ef4444', false, 2); 
+            }
+
+            // --- 4. Draw East/West Direction Labels (Simplified) ---
+            
+            const eastLabelX = Cx - (R / 2); 
+            const eastLabelY = Cy - 10; 
+
+            const westLabelX = Cx + (R / 2);
+            const westLabelY = Cy - 10;
+            
+            ctx.fillStyle = '#9ca3af';
+            ctx.textAlign = 'center';
+            // Removed East (Pre-Meridian) -> Pre-Meridian
+            ctx.fillText('Pre-Meridian', eastLabelX, eastLabelY); 
+            // Removed West (Post-Meridian) -> Post-Meridian
+            ctx.fillText('Post-Meridian', westLabelX, westLabelY);
+
+            // --- 5. Draw Legend (Top Left) ---
+            
+            const T_PBM_Deadline = T_Pause_sec > 0 ? -T_Pause_sec : null;
+            
+            const legendItems = [
+                { 
+                    // Reverted color to blue
+                    label: 'Calculated Flip Start', 
+                    time: t_FlipStart, 
+                    color: '#3b82f6', 
+                    isDashed: true, 
+                    thickness: 2,  
+                    isFocus: true 
+                },
+                { 
+                    // Changed T1 color to red
+                    label: 'Minutes After Meridian (T1)', 
+                    time: T1_sec, 
+                    color: '#ef4444', 
+                    isDashed: false, 
+                    thickness: 2, 
+                    condition: T1_sec > 0 
+                },
+                { 
+                    label: 'Max. Minutes After Meridian (T2)', 
+                    time: T2_sec_software, 
+                    color: '#3b82f6', 
+                    isDashed: false, 
+                    thickness: 2, 
+                    condition: T2_sec_software > 0 
+                },
+                { 
+                    label: 'Max. Mount Tracking Limit', 
+                    time: T_MountLimit_sec, 
+                    color: '#f87171', 
+                    isDashed: false, 
+                    thickness: 3, 
+                    condition: T_MountLimit_sec > 0 
+                },
+                { 
+                    // Changed PBM color to red
+                    label: 'Pause before meridian (PBM)', 
+                    time: T_PBM_Deadline, 
+                    color: '#ef4444', 
+                    isDashed: false, 
+                    thickness: 2, 
+                    condition: T_Pause_sec > 0 
+                },
+            ].filter(item => item.condition === undefined || item.condition);
+
+            const legendX = 20;
+            let legendY = 30;
+            const lineHeight = 16; 
+            const swatchSize = 10; 
+            const textOffset = 15; 
+            
+            ctx.fillStyle = '#9ca3af'; 
+            ctx.font = '12px Inter, sans-serif'; 
+            ctx.textAlign = 'left';
+
+            // Draw Legend Header
+            ctx.fillStyle = '#f3f4f6';
+            ctx.font = 'bold 14px Inter, sans-serif'; 
+            ctx.fillText('Key Timing Points', legendX, legendY);
+            legendY += lineHeight + 5;
+            
+            ctx.font = '12px Inter, sans-serif'; 
+
+            legendItems.forEach(item => {
+                ctx.strokeStyle = item.color; 
+                ctx.fillStyle = item.color;
+                
+                // Draw Color Swatch (a short line segment)
+                ctx.setLineDash(item.isDashed ? [3, 3] : []);
+                ctx.lineWidth = item.thickness;
+                ctx.beginPath();
+                ctx.moveTo(legendX, legendY - swatchSize / 2 + 2); 
+                ctx.lineTo(legendX + swatchSize, legendY - swatchSize / 2 + 2); 
+                ctx.stroke();
+
+                // Draw Text
+                const timeString = formatTime(item.time);
+                ctx.fillStyle = item.color;
+                ctx.fillText(`${item.label}: ${timeString}`, legendX + textOffset, legendY);
+                
+                legendY += lineHeight;
+            });
+            
+            // Reset line dash for main drawing area if needed (though drawLine handles it)
+            ctx.setLineDash([]);
+        }
         
         // --- Utility Functions ---
 
@@ -407,7 +667,7 @@
             const inputsMaxTime = Math.max(
                 Math.abs(T_Effective_Deadline), 
                 Math.abs(T_MountLimit_sec), 
-                Math.abs(t_SubChainStart), // Use chain start time for left limit
+                Math.abs(t_StartLastExp - T_Exposure), // Use chain start time for left limit
                 T_Pause_sec, // Ensure PBM zone is visible
                 300
             ); 
@@ -764,7 +1024,7 @@
                     // Sub finished too late. Tracking must stop at T_Effective_Deadline.
                     t_DowntimeStart = T_Effective_Deadline;
                     t_StartLastExp = t_DowntimeStart - T_Exposure;
-                    scenarioDescription = `<strong>DEADLINE CROSSED:</strong> Sequence crosses the effective deadline. Flip may fail or is clamped.`;
+                    scenarioDescription = `<strong>DEADLINE CROSSED:</strong> Sequence crosses the effective deadline. Tracking is clamped to the deadline.`;
                 }
                 
                 // Check if the sub finishes within the T1 to Deadline window
@@ -782,7 +1042,7 @@
                 }
 
                 // T_Wait is always the difference between when the flip *starts* and when tracking *stopped*.
-                T_Wait = t_FlipStart - t_DowntimeStart;
+                T_Wait = Math.max(0, t_FlipStart - t_DowntimeStart);
 
             } else { 
                 // SCENARIO 3: Fixed Time Flip (T1 >= Deadline or T1 = T2)
@@ -809,10 +1069,25 @@
             const time_meridian_to_resume = t_FlipStart + T_PostFlip; 
             const T_Downtime = T_Wait + T_PostFlip;
             
-            // Update global maxTime for rendering/drag limits
+            // Update global maxTime for rendering/drag limits (for linear axis)
             const minTime = Math.min(0, t_StartLastExp, -T_Pause_sec) - 60; // Include PBM start time in minimum calculation
             const maxTimeCalc = Math.max(0, T_MountLimit_sec, time_meridian_to_resume) + 60; 
             maxTime = Math.max(Math.abs(minTime), Math.abs(maxTimeCalc)); 
+            
+            // --- Angular Diagram Specific Scale Calculations (Symmetrical) ---
+            
+            // 1. Determine the largest time value (in magnitude) on either side
+            const maxTimeMagnitude = Math.max(
+                T_Pause_sec, 
+                T2_sec_software, 
+                T_MountLimit_sec, 
+                time_meridian_to_resume,
+                300 // Set a minimum base scale of 5 minutes (300s)
+            ); 
+
+            // 2. Set both positive and negative max displays to this single, symmetrical max.
+            const T_neg_max_display = maxTimeMagnitude; 
+            const T_pos_max_display = maxTimeMagnitude; 
             
             
             // --- SNAP LOGIC (Handles visual transition and anchoring) ---
@@ -836,7 +1111,6 @@
                     subElement.style.left = `${subStartPos}px`;
                     subElement.style.width = `${T_Exposure * scaleFactor}px`; // Ensure width update is instant
                     
-                    // Re-enable transition for smooth dragging/future snaps
                     setTimeout(() => {
                         if (subElement) subElement.style.transition = 'left 0.3s ease-out, opacity 0.3s ease-in-out, width 0.1s';
                     }, 10); 
@@ -852,6 +1126,9 @@
                 t_SubEnd_Manual = t_DowntimeStart; 
             }
 
+            // ************ RENDER ANGULAR DIAGRAM ************
+            // Passing the symmetrical max values
+            renderAngularDiagram(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, T2_sec_software, T_MountLimit_sec, T_Pause_sec, T_neg_max_display, T_pos_max_display);
 
             // Re-render the UI, passing T_Pause_sec
             renderTimeAxis(t_DowntimeStart, t_FlipStart, T_Effective_Deadline, T1_sec, t_StartLastExp, T_MountLimit_sec, T_Exposure, t_StartLastExp - T_Exposure, T_Pause_sec);
