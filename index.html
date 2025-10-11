@@ -1007,9 +1007,9 @@
                      // The sub sequence would cross the PBM point. Clamped to PBM.
                      t_DowntimeStart = T_PBM_Deadline; 
                      t_StartLastExp = t_DowntimeStart - T_Exposure;
-                     scenarioDescription = `<strong>PBM CLAMPED:</strong> Tracking must stop at PBM deadline (${formatTime(T_PBM_Deadline)}).`;
+                     scenarioDescription = `Sequence ends before PBM. Imaging pauses when sub finishes. (${formatTime(T_PBM_Deadline)}).`;
                 } else {
-                     scenarioDescription = `<strong>PBM SAFE:</strong> Sequence ends before PBM. Tracking stops when sub finishes.`;
+                     scenarioDescription = `Sequence ends before PBM. Imaging pauses when sub finishes.`;
                 }
 
                 // Flip must still wait for T1
@@ -1031,7 +1031,7 @@
                 if (t_DowntimeStart >= T1_sec && t_DowntimeStart <= T_Effective_Deadline) {
                     // Opportunistic Flip: Sub finished within the window, flip immediately after sub ends.
                     t_FlipStart = t_DowntimeStart;
-                    scenarioDescription = `<strong>OPPORTUNISTIC FLIP:</strong> Sub finishes in the flip window. Flip starts immediately after sub ends.`;
+                    scenarioDescription = `Sub finishes in the flip window. Flip starts immediately after sub ends.`;
                 } else if (t_DowntimeStart < T1_sec) {
                     // Sub finished too early (before T1). Must wait for T1.
                     t_FlipStart = T1_sec;
